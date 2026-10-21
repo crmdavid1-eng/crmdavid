@@ -19,7 +19,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { MessageCircle, Phone, Plus } from "lucide-react";
 import type { Lead, Stage } from "@/lib/types";
-import { formatDate, formatMoney, waLink } from "@/lib/format";
+import { formatDate, formatMoney, formatPhone, waLink } from "@/lib/format";
 
 type Columns = Record<string, Lead[]>;
 
@@ -119,7 +119,7 @@ export function Board({
       onDragEnd={onDragEnd}
       onDragCancel={() => { setActive(null); setDragCols(null); }}
     >
-      <div className="scroll-thin flex h-full snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 md:snap-none">
+      <div className="scroll-thin flex h-full snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-4 md:snap-none md:px-6">
         {stages.map((s) => (
           <Column key={s.id} stage={s} leads={cols[s.id] ?? []} onOpen={onOpen} onAdd={() => onAdd(s.id)} />
         ))}
@@ -134,27 +134,31 @@ function Column({ stage, leads, onOpen, onAdd }: { stage: Stage; leads: Lead[]; 
   const total = leads.reduce((sum, l) => sum + (l.amount ?? 0), 0);
 
   return (
-    <section className="flex h-full w-[85vw] shrink-0 snap-center flex-col rounded-xl bg-black/[0.035] sm:w-72">
-      <header className="px-3 pt-3 pb-2">
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: stage.color }} />
+    <section
+      id={`stage-${stage.id}`}
+      className="flex h-full w-[86vw] shrink-0 snap-center flex-col overflow-hidden rounded-xl bg-white/45 sm:w-[17.5rem]"
+      style={{ boxShadow: `inset 0 3px 0 ${stage.color}` }}
+    >
+      <header className="flex items-end gap-2 px-3 pt-3.5 pb-2">
+        <div className="min-w-0 flex-1">
           <h2 className="truncate text-sm font-semibold">{stage.name}</h2>
-          <span className="ml-auto rounded-full bg-white px-2 py-0.5 text-xs text-muted">{leads.length}</span>
+          <p className="h-4 text-xs text-money tabular-nums">{total > 0 ? formatMoney(total) : ""}</p>
         </div>
-        <div className="mt-1 h-0.5 rounded-full" style={{ background: stage.color, opacity: 0.35 }} />
-        {total > 0 && <p className="mt-1.5 text-xs text-muted">{formatMoney(total)}</p>}
+        <span className="text-2xl leading-none font-semibold tracking-tight tabular-nums" style={{ color: stage.color }}>
+          {leads.length}
+        </span>
       </header>
       <div
         ref={setNodeRef}
-        className={`scroll-thin flex min-h-24 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2 transition ${isOver ? "bg-accent/5" : ""}`}
+        className={`scroll-thin flex min-h-24 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2 transition-colors ${isOver ? "bg-accent/[0.06]" : ""}`}
       >
         <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map((l) => (
             <SortableCard key={l.id} lead={l} onOpen={onOpen} />
           ))}
         </SortableContext>
-        <button onClick={onAdd} className="btn-ghost justify-start text-muted">
-          <Plus size={16} /> Добавить
+        <button onClick={onAdd} className="btn-ghost shrink-0 justify-start text-muted hover:text-ink">
+          <Plus size={16} /> Добавить заявку
         </button>
       </div>
     </section>
@@ -167,10 +171,14 @@ function SortableCard({ lead, onOpen }: { lead: Lead; onOpen: (l: Lead) => void 
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? "opacity-40" : ""}
+      className={`rounded-lg ${isDragging ? "opacity-30" : ""}`}
       {...attributes}
       {...listeners}
       onClick={() => onOpen(lead)}
+      onKeyDown={(e) => {
+        listeners?.onKeyDown?.(e);
+        if (e.key === "Enter") onOpen(lead);
+      }}
     >
       <Card lead={lead} />
     </div>
@@ -178,28 +186,31 @@ function SortableCard({ lead, onOpen }: { lead: Lead; onOpen: (l: Lead) => void 
 }
 
 function Card({ lead, overlay }: { lead: Lead; overlay?: boolean }) {
+  const title = lead.name || formatPhone(lead.phone) || lead.instagram || "Без имени";
   return (
     <article
-      className={`cursor-pointer rounded-lg border border-line bg-panel p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-accent/40 ${overlay ? "rotate-2 shadow-lg" : ""}`}
+      className={`cursor-pointer rounded-lg border border-line bg-panel px-3 py-2.5 transition-colors hover:border-ink/25 ${overlay ? "rotate-[1.5deg] border-ink/25 shadow-xl" : ""}`}
     >
-      <div className="flex items-start gap-2">
-        <h3 className="line-clamp-2 flex-1 text-sm font-medium">{lead.name || lead.phone || lead.instagram || "Без имени"}</h3>
-        {lead.amount != null && <span className="shrink-0 text-xs font-semibold text-emerald-700">{formatMoney(lead.amount)}</span>}
+      <div className="flex items-baseline gap-2">
+        <h3 className="line-clamp-2 flex-1 text-[0.9rem] leading-snug font-medium">{title}</h3>
+        {lead.amount != null && (
+          <span className="shrink-0 text-xs font-semibold text-money tabular-nums">{formatMoney(lead.amount)}</span>
+        )}
       </div>
-      {lead.note && <p className="mt-1 line-clamp-2 text-xs text-muted">{lead.note}</p>}
+      {lead.note && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{lead.note}</p>}
       <div className="mt-2 flex items-center gap-2 text-xs text-muted">
-        {lead.source && <span className="rounded bg-accent-soft px-1.5 py-0.5 text-accent">{lead.source}</span>}
-        <span className="ml-auto">{formatDate(lead.created_at)}</span>
+        {lead.source && <span className="font-medium text-ink/70">{lead.source}</span>}
+        <span className="ml-auto tabular-nums">{formatDate(lead.created_at)}</span>
       </div>
       {lead.phone && (
-        <div className="mt-2 flex items-center gap-1 border-t border-line pt-2">
-          <span className="flex-1 truncate text-xs">{lead.phone}</span>
+        <div className="-mx-1 mt-2 flex items-center gap-0.5 border-t border-line/70 pt-1.5">
+          <span className="flex-1 truncate px-1 text-xs tabular-nums text-ink/80">{formatPhone(lead.phone)}</span>
           <a
             href={`tel:${lead.phone}`}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            className="rounded p-1 text-muted hover:bg-black/5"
-            title="Позвонить"
+            className="rounded-md p-1.5 text-muted hover:bg-ink/5 hover:text-ink"
+            aria-label="Позвонить"
           >
             <Phone size={14} />
           </a>
@@ -209,8 +220,8 @@ function Card({ lead, overlay }: { lead: Lead; overlay?: boolean }) {
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            className="rounded p-1 text-emerald-600 hover:bg-emerald-50"
-            title="Написать в WhatsApp"
+            className="rounded-md p-1.5 text-[#1a9e5c] hover:bg-[#1a9e5c]/10"
+            aria-label="Написать в WhatsApp"
           >
             <MessageCircle size={14} />
           </a>

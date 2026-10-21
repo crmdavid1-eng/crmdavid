@@ -1,26 +1,32 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-inter), system-ui, sans-serif;
-  --color-bg: #f6f7f9;
+  --font-sans: var(--font-onest), system-ui, sans-serif;
+  --color-bg: #edf0ec;
   --color-panel: #ffffff;
-  --color-line: #e6e8ec;
-  --color-ink: #16181d;
-  --color-muted: #6b7280;
-  --color-accent: #4f46e5;
-  --color-accent-soft: #eef2ff;
+  --color-line: #d9e0db;
+  --color-ink: #142420;
+  --color-muted: #677670;
+  --color-accent: #2448e0;
+  --color-accent-soft: #e8edfd;
+  --color-money: #0e7a55;
 }
 
 html, body {
   background: var(--color-bg);
   color: var(--color-ink);
   -webkit-tap-highlight-color: transparent;
+  font-feature-settings: "tnum" 0;
 }
 
-input, textarea, select { font-size: 16px; } /* iOS не зумит поля */
-@media (min-width: 768px) {
-  input, textarea, select { font-size: 14px; }
+@layer base {
+  input, textarea, select { font-size: 16px; } /* iOS не зумит поля */
+  @media (min-width: 768px) {
+    input, textarea, select { font-size: 14px; }
+  }
 }
+
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 
 @utility input {
   @apply w-full rounded-lg border border-line bg-white px-3 py-2 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15;
@@ -28,8 +34,20 @@ input, textarea, select { font-size: 16px; } /* iOS не зумит поля */
 @utility btn {
   @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50 cursor-pointer select-none;
 }
-@utility btn-primary { @apply btn bg-accent text-white hover:bg-accent/90; }
-@utility btn-ghost { @apply btn text-ink hover:bg-black/5; }
-@utility btn-outline { @apply btn border border-line bg-white hover:bg-black/[0.03]; }
+@utility btn-primary { @apply btn bg-ink text-white hover:bg-ink/85; }
+@utility btn-accent { @apply btn bg-accent text-white hover:bg-accent/90; }
+@utility btn-ghost { @apply btn text-ink hover:bg-ink/5; }
+@utility btn-outline { @apply btn border border-line bg-white hover:border-ink/25; }
 
-.scroll-thin { scrollbar-width: thin; }
+.scroll-thin { scrollbar-width: thin; scrollbar-color: #c5cec8 transparent; }
+
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+.toast-in { animation: toast-in 0.18s ease-out; }
+@keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } }
+.drawer-in { animation: drawer-in 0.2s ease-out; }
+@keyframes sheet-in { from { transform: translateY(16px); opacity: 0; } }
+.sheet-in { animation: sheet-in 0.18s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { IS_DEMO } from "@/lib/supabase/mode";
 
 export async function proxy(request: NextRequest) {
+  if (IS_DEMO) return NextResponse.next();
   let response = NextResponse.next({ request });
 
   const sb = createServerClient(

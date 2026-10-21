@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { serverSupabase } from "@/lib/supabase/server";
+import { IS_DEMO } from "@/lib/supabase/mode";
 import { CrmApp } from "@/components/CrmApp";
 
 export default function Home() {
@@ -12,6 +13,7 @@ export default function Home() {
 }
 
 async function Authed() {
+  if (IS_DEMO) return <CrmApp email="демо-режим" webhookToken="" demo />;
   const sb = await serverSupabase();
   const { data } = await sb.auth.getUser();
   if (!data.user) redirect("/login");

@@ -32,8 +32,8 @@ export default function LoginPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon.svg" alt="" className="h-10 w-10" />
           <div>
-            <h1 className="text-lg font-semibold">Вход в CRM</h1>
-            <p className="text-sm text-muted">Заявки и воронки</p>
+            <h1 className="text-xl font-semibold tracking-tight">Вход в CRM</h1>
+            
           </div>
         </div>
         <label className="mb-3 block">

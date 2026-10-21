@@ -15,7 +15,7 @@ export function IntegrationsModal({ token, onClose }: { token: string; onClose: 
   }
 
   return (
-    <Modal title="Интеграции" onClose={onClose} wide>
+    <Modal title="Источники заявок" onClose={onClose} wide>
       <div className="space-y-5 text-sm">
         <section>
           <h3 className="mb-1 font-semibold">Вебхук для новых заявок</h3>

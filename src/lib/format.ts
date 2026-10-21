@@ -38,3 +38,18 @@ export function waLink(phone: string) {
 export function igLink(handle: string) {
   return `https://instagram.com/${handle.replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "")}`;
 }
+
+/** plural(5, "заявка", "заявки", "заявок") → "заявок" */
+export function plural(n: number, one: string, few: string, many: string) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
+/** +77011234567 → +7 701 123 45 67 (для показа) */
+export function formatPhone(p: string | null | undefined) {
+  if (!p) return "";
+  const m = p.match(/^\+7(\d{3})(\d{3})(\d{2})(\d{2})$/);
+  return m ? `+7 ${m[1]} ${m[2]} ${m[3]} ${m[4]}` : p;
+}

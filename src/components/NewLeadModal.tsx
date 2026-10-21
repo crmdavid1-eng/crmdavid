@@ -79,8 +79,8 @@ export function NewLeadModal({
         </Field>
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="btn-ghost">Отмена</button>
-          <button className="btn-primary" disabled={saving || (!f.name.trim() && !f.phone.trim() && !f.instagram.trim())}>
-            {saving ? "Сохраняем…" : "Создать"}
+          <button className="btn-accent" disabled={saving || (!f.name.trim() && !f.phone.trim() && !f.instagram.trim())}>
+            {saving ? "Создаём…" : "Создать заявку"}
           </button>
         </div>
       </form>

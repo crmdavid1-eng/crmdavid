@@ -6,21 +6,25 @@ import {
 } from "lucide-react";
 import { useCrm } from "@/lib/useCrm";
 import { exportLeads } from "@/lib/excel";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, plural } from "@/lib/format";
+import { toast } from "@/lib/toast";
+import { resetDemo } from "@/lib/supabase/demo";
 import { Board } from "@/components/Board";
+import { FunnelStrip } from "@/components/FunnelStrip";
 import { LeadsTable } from "@/components/LeadsTable";
 import { LeadDrawer } from "@/components/LeadDrawer";
 import { NewLeadModal } from "@/components/NewLeadModal";
 import { PipelineSettings } from "@/components/PipelineSettings";
 import { ImportModal } from "@/components/ImportModal";
 import { IntegrationsModal } from "@/components/IntegrationsModal";
+import { Toasts } from "@/components/Toasts";
 
 type View = "board" | "table";
 type Dialog = null | "settings" | "import" | "integrations" | { newLead: string | undefined };
 
 const VIEW_KEY = "crm.view";
 
-export function CrmApp({ email, webhookToken }: { email: string; webhookToken: string }) {
+export function CrmApp({ email, webhookToken, demo }: { email: string; webhookToken: string; demo?: boolean }) {
   const crm = useCrm();
   const [view, setView] = useState<View>(() => {
     try {
@@ -64,21 +68,43 @@ export function CrmApp({ email, webhookToken }: { email: string; webhookToken: s
 
   const openLead = crm.leads.find((l) => l.id === openId) ?? null;
   const total = filtered.reduce((s, l) => s + (l.amount ?? 0), 0);
+  const filtering = Boolean(query || source);
 
   function doExport() {
     setMenu(false);
     const date = new Date().toISOString().slice(0, 10);
-    exportLeads(filtered, crm.stages, `заявки-${crm.pipeline?.name ?? "crm"}-${date}.xlsx`);
+    exportLeads(filtered, crm.stages, `заявки-${crm.pipeline?.name ?? "crm"}-${date}.xlsx`).then(() =>
+      toast(`Выгружено ${filtered.length} ${plural(filtered.length, "заявка", "заявки", "заявок")}`),
+    );
+  }
+
+  function pickStage(stageId: string) {
+    if (view !== "board") changeView("board");
+    requestAnimationFrame(() =>
+      document.getElementById(`stage-${stageId}`)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }),
+    );
   }
 
   if (crm.loading) {
-    return <div className="flex h-full items-center justify-center text-sm text-muted">Загрузка…</div>;
+    return <div className="flex h-full items-center justify-center text-sm text-muted">Загружаем заявки…</div>;
   }
 
   return (
     <div className="flex h-full flex-col">
+      {demo && (
+        <div className="flex items-center gap-3 bg-ink px-4 py-1.5 text-xs text-white/80">
+          <span className="flex-1">Демо-режим: данные хранятся только в этом браузере. Подключите Supabase, чтобы вести настоящую базу.</span>
+          <button
+            className="shrink-0 underline-offset-2 hover:underline"
+            onClick={() => { if (confirm("Стереть демо-данные и начать заново?")) { resetDemo(); location.reload(); } }}
+          >
+            Сбросить
+          </button>
+        </div>
+      )}
+
       {/* Шапка */}
-      <header className="flex items-center gap-2 px-4 pt-3 pb-2 md:gap-3">
+      <header className="flex items-center gap-2 px-4 pt-3 md:gap-4 md:px-6 md:pt-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icon.svg" alt="" className="hidden h-8 w-8 md:block" />
 
@@ -86,14 +112,15 @@ export function CrmApp({ email, webhookToken }: { email: string; webhookToken: s
           <select
             value={crm.pipelineId ?? ""}
             onChange={(e) => crm.setPipelineId(e.target.value)}
-            className="max-w-[52vw] cursor-pointer appearance-none [field-sizing:content] truncate rounded-lg bg-transparent py-1.5 pr-7 pl-1 text-lg font-semibold outline-none hover:bg-black/5 md:max-w-none"
+            aria-label="Воронка"
+            className="max-w-[52vw] cursor-pointer appearance-none truncate rounded-lg bg-transparent py-1 pr-7 pl-1 text-xl font-semibold tracking-tight outline-none [field-sizing:content] hover:bg-ink/5 md:max-w-none md:text-2xl"
           >
             {crm.pipelines.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <ChevronDown size={16} className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-muted" />
+          <ChevronDown size={18} className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-muted" />
         </div>
 
-        <div className="hidden rounded-lg bg-black/5 p-0.5 sm:flex">
+        <div className="hidden rounded-lg bg-ink/[0.06] p-0.5 sm:flex">
           <ViewBtn on={view === "board"} onClick={() => changeView("board")} icon={<Columns3 size={15} />} label="Канбан" />
           <ViewBtn on={view === "table"} onClick={() => changeView("table")} icon={<Table2 size={15} />} label="Таблица" />
         </div>
@@ -102,37 +129,39 @@ export function CrmApp({ email, webhookToken }: { email: string; webhookToken: s
           <div className="relative hidden md:block">
             <Search size={15} className="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted" />
             <input
-              className="input w-60 py-1.5 pl-8"
-              placeholder="Поиск: имя, телефон, @ник"
+              className="input w-64 py-1.5 pl-8"
+              placeholder="Имя, телефон или @ник"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
           <button className="btn-ghost p-2 md:hidden" onClick={() => setSearchOpen(!searchOpen)} aria-label="Поиск">
-            <Search size={18} />
+            <Search size={19} />
           </button>
-          <button className="btn-primary" onClick={() => setDialog({ newLead: undefined })}>
-            <Plus size={16} /> <span className="hidden sm:inline">Заявка</span>
+          <button className="btn-accent" onClick={() => setDialog({ newLead: undefined })}>
+            <Plus size={16} /> <span className="hidden sm:inline">Новая заявка</span>
           </button>
 
           <div className="relative">
-            <button className="btn-ghost p-2" onClick={() => setMenu(!menu)} aria-label="Меню">
-              <Menu size={18} />
+            <button className="btn-ghost p-2" onClick={() => setMenu(!menu)} aria-label="Меню" aria-expanded={menu}>
+              <Menu size={19} />
             </button>
             {menu && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setMenu(false)} />
-                <div className="absolute right-0 z-30 mt-1 w-60 overflow-hidden rounded-xl border border-line bg-panel py-1 shadow-lg">
+                <div className="sheet-in absolute right-0 z-30 mt-1 w-64 overflow-hidden rounded-xl border border-line bg-panel py-1 shadow-xl">
                   <MenuItem icon={<Settings2 size={16} />} onClick={() => { setMenu(false); setDialog("settings"); }}>Воронки и этапы</MenuItem>
-                  <MenuItem icon={<Upload size={16} />} onClick={() => { setMenu(false); setDialog("import"); }}>Импорт из Excel</MenuItem>
-                  <MenuItem icon={<Download size={16} />} onClick={doExport}>Экспорт в Excel</MenuItem>
-                  <MenuItem icon={<Plug size={16} />} onClick={() => { setMenu(false); setDialog("integrations"); }}>Интеграции</MenuItem>
+                  <MenuItem icon={<Upload size={16} />} onClick={() => { setMenu(false); setDialog("import"); }}>Загрузить из Excel</MenuItem>
+                  <MenuItem icon={<Download size={16} />} onClick={doExport}>Выгрузить в Excel</MenuItem>
+                  <MenuItem icon={<Plug size={16} />} onClick={() => { setMenu(false); setDialog("integrations"); }}>Подключить источники заявок</MenuItem>
                   <MenuItem icon={<RefreshCw size={16} />} onClick={() => { setMenu(false); crm.reload(); }}>Обновить</MenuItem>
                   <div className="my-1 border-t border-line" />
                   <div className="truncate px-3 py-1 text-xs text-muted">{email}</div>
-                  <form action="/auth/signout" method="post">
-                    <MenuItem icon={<LogOut size={16} />} type="submit">Выйти</MenuItem>
-                  </form>
+                  {!demo && (
+                    <form action="/auth/signout" method="post">
+                      <MenuItem icon={<LogOut size={16} />} type="submit">Выйти</MenuItem>
+                    </form>
+                  )}
                 </div>
               </>
             )}
@@ -140,46 +169,61 @@ export function CrmApp({ email, webhookToken }: { email: string; webhookToken: s
         </div>
       </header>
 
-      {/* Мобильный поиск */}
       {searchOpen && (
-        <div className="relative px-4 pb-2 md:hidden">
-          <Search size={15} className="absolute top-1/2 left-6.5 -translate-y-1/2 text-muted" />
-          <input autoFocus className="input pl-8" placeholder="Имя, телефон, @ник" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="relative px-4 pt-2 md:hidden">
+          <Search size={15} className="absolute top-1/2 left-7 mt-1 -translate-y-1/2 text-muted" />
+          <input autoFocus className="input pl-9" placeholder="Имя, телефон или @ник" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
       )}
 
+      {/* Воронка */}
+      <div className="px-4 pt-3 md:px-6 md:pt-4">
+        <FunnelStrip stages={crm.stages} leads={filtered} onPick={pickStage} />
+      </div>
+
       {/* Фильтры и итоги */}
-      <div className="flex items-center gap-2 overflow-x-auto px-4 pb-3 text-sm">
-        <div className="flex rounded-lg bg-black/5 p-0.5 sm:hidden">
-          <ViewBtn on={view === "board"} onClick={() => changeView("board")} icon={<Columns3 size={15} />} />
-          <ViewBtn on={view === "table"} onClick={() => changeView("table")} icon={<Table2 size={15} />} />
+      <div className="flex items-center gap-2 overflow-x-auto px-4 py-3 text-sm md:px-6">
+        <div className="flex shrink-0 rounded-lg bg-ink/[0.06] p-0.5 sm:hidden">
+          <ViewBtn on={view === "board"} onClick={() => changeView("board")} icon={<Columns3 size={15} />} label="" />
+          <ViewBtn on={view === "table"} onClick={() => changeView("table")} icon={<Table2 size={15} />} label="" />
         </div>
         {sources.length > 0 && (
-          <select value={source} onChange={(e) => setSource(e.target.value)} className="shrink-0 rounded-lg border border-line bg-panel px-2 py-1 outline-none">
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            aria-label="Источник"
+            className={`shrink-0 cursor-pointer rounded-lg border px-2 py-1 outline-none ${source ? "border-ink bg-ink text-white" : "border-line bg-panel"}`}
+          >
             <option value="">Все источники</option>
             {sources.map((s) => <option key={s}>{s}</option>)}
           </select>
         )}
-        {(query || source) && (
-          <button className="btn-ghost px-2 py-1 text-muted" onClick={() => { setQuery(""); setSource(""); }}>
+        {filtering && (
+          <button className="btn-ghost shrink-0 px-2 py-1 text-muted" onClick={() => { setQuery(""); setSource(""); }}>
             <X size={14} /> Сбросить
           </button>
         )}
-        <span className="ml-auto shrink-0 text-muted">
-          {filtered.length} заявок
-          {total > 0 && <span className="hidden sm:inline"> · {formatMoney(total)}</span>}
-        </span>
+        <p className="ml-auto shrink-0 text-muted">
+          <span className="font-semibold text-ink tabular-nums">{filtered.length}</span> {plural(filtered.length, "заявка", "заявки", "заявок")}
+          {total > 0 && (
+            <span className="max-sm:hidden">
+              {" "}на <span className="font-semibold text-money tabular-nums">{formatMoney(total)}</span>
+            </span>
+          )}
+        </p>
       </div>
 
       {crm.error && (
-        <div className="mx-4 mb-3 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          <span className="flex-1">Ошибка: {crm.error}</span>
-          <button onClick={crm.clearError}><X size={16} /></button>
+        <div className="mx-4 mb-3 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 md:mx-6">
+          <span className="flex-1">Не удалось сохранить изменения: {crm.error}. Проверьте интернет и нажмите «Обновить» в меню.</span>
+          <button onClick={crm.clearError} aria-label="Скрыть"><X size={16} /></button>
         </div>
       )}
 
       <main className="min-h-0 flex-1">
-        {view === "board" ? (
+        {crm.leads.length === 0 ? (
+          <EmptyState onAdd={() => setDialog({ newLead: undefined })} onImport={() => setDialog("import")} />
+        ) : view === "board" ? (
           <Board
             stages={crm.stages}
             leads={filtered}
@@ -204,7 +248,7 @@ export function CrmApp({ email, webhookToken }: { email: string; webhookToken: s
           stages={crm.stages}
           onClose={() => setOpenId(null)}
           onUpdate={crm.updateLead}
-          onDelete={crm.deleteLead}
+          onDelete={async (id) => { await crm.deleteLead(id); toast("Заявка удалена"); }}
         />
       )}
       {dialog && typeof dialog === "object" && (
@@ -212,21 +256,43 @@ export function CrmApp({ email, webhookToken }: { email: string; webhookToken: s
           stages={crm.stages}
           stageId={dialog.newLead}
           onClose={() => setDialog(null)}
-          onCreate={crm.createLead}
+          onCreate={async (input) => {
+            const lead = await crm.createLead(input);
+            if (lead) toast("Заявка создана", { action: { label: "Открыть", run: () => setOpenId(lead.id) } });
+            return lead;
+          }}
         />
       )}
       {dialog === "settings" && <PipelineSettings crm={crm} onClose={() => setDialog(null)} />}
       {dialog === "import" && <ImportModal crm={crm} onClose={() => setDialog(null)} />}
       {dialog === "integrations" && <IntegrationsModal token={webhookToken} onClose={() => setDialog(null)} />}
+      <Toasts />
     </div>
   );
 }
 
-function ViewBtn({ on, onClick, icon, label }: { on: boolean; onClick: () => void; icon: React.ReactNode; label?: string }) {
+function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => void }) {
+  return (
+    <div className="flex h-full items-center justify-center p-6">
+      <div className="max-w-sm text-center">
+        <h2 className="text-lg font-semibold">В этой воронке пока нет заявок</h2>
+        <p className="mt-1 text-sm text-muted">Добавьте первую вручную или загрузите базу клиентов из Excel.</p>
+        <div className="mt-4 flex justify-center gap-2">
+          <button className="btn-accent" onClick={onAdd}><Plus size={16} /> Новая заявка</button>
+          <button className="btn-outline" onClick={onImport}><Upload size={16} /> Загрузить из Excel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ViewBtn({ on, onClick, icon, label }: { on: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition ${on ? "bg-white font-medium shadow-sm" : "text-muted hover:text-ink"}`}
+      aria-pressed={on}
+      aria-label={label || undefined}
+      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition ${on ? "bg-white font-medium text-ink shadow-sm" : "text-muted hover:text-ink"}`}
     >
       {icon}
       {label}
@@ -240,7 +306,7 @@ function MenuItem({
   ...props
 }: { icon: React.ReactNode; children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button {...props} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-black/[0.04]">
+    <button {...props} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-ink/[0.04]">
       <span className="text-muted">{icon}</span>
       {children}
     </button>

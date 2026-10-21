@@ -40,10 +40,10 @@ export function ImportModal({ crm, onClose }: { crm: Crm; onClose: () => void })
   }
 
   return (
-    <Modal title="Импорт из Excel" onClose={onClose}>
+    <Modal title="Загрузить из Excel" onClose={onClose}>
       {done != null ? (
         <div className="space-y-4 text-center">
-          <p className="text-lg font-semibold">Готово: добавлено {done} заявок</p>
+          <p className="text-lg font-semibold">Загружено заявок: {done}</p>
           <button className="btn-primary" onClick={onClose}>Закрыть</button>
         </div>
       ) : (
@@ -75,8 +75,8 @@ export function ImportModal({ crm, onClose }: { crm: Crm; onClose: () => void })
           )}
           <div className="flex justify-end gap-2">
             <button className="btn-ghost" onClick={onClose}>Отмена</button>
-            <button className="btn-primary" disabled={!parsed?.rows.length || busy} onClick={run}>
-              {busy ? "Импортируем…" : "Импортировать"}
+            <button className="btn-accent" disabled={!parsed?.rows.length || busy} onClick={run}>
+              {busy ? "Загружаем…" : "Загрузить заявки"}
             </button>
           </div>
         </div>

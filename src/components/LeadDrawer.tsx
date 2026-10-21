@@ -79,9 +79,9 @@ export function LeadDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/20" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-40 flex justify-end bg-ink/25" onMouseDown={onClose}>
       <aside
-        className="flex h-full w-full flex-col bg-panel shadow-2xl sm:max-w-lg"
+        className="drawer-in flex h-full w-full flex-col bg-panel shadow-2xl sm:max-w-lg"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <header className="flex items-center gap-2 border-b border-line px-4 py-3">
@@ -127,7 +127,7 @@ export function LeadDrawer({
               {lead.phone && (
                 <>
                   <a href={`tel:${lead.phone}`} className="btn-outline flex-1"><Phone size={16} /> Позвонить</a>
-                  <a href={waLink(lead.phone)} target="_blank" rel="noreferrer" className="btn-outline flex-1 text-emerald-700">
+                  <a href={waLink(lead.phone)} target="_blank" rel="noreferrer" className="btn-outline flex-1 text-[#1a9e5c]">
                     <MessageCircle size={16} /> WhatsApp
                   </a>
                 </>
@@ -187,7 +187,7 @@ export function LeadDrawer({
 
           {/* Лента */}
           <div className="border-t border-line px-4 py-4">
-            <h3 className="mb-3 text-sm font-semibold">Комментарии и история</h3>
+            <h3 className="mb-3 text-sm font-semibold">История</h3>
             <ul className="space-y-3">
               {activities.map((a) => (
                 <ActivityItem key={a.id} a={a} onDelete={() => removeActivity(a.id)} />
@@ -202,7 +202,7 @@ export function LeadDrawer({
             className="input max-h-40 min-h-[42px] flex-1 resize-none"
             rows={1}
             value={comment}
-            placeholder="Написать комментарий…"
+            placeholder="Комментарий: о чём договорились, что дальше"
             onChange={(e) => setComment(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !("ontouchstart" in window)) {
@@ -211,7 +211,7 @@ export function LeadDrawer({
               }
             }}
           />
-          <button className="btn-primary h-[42px] w-[42px] p-0" disabled={!comment.trim()} aria-label="Отправить">
+          <button className="btn-accent h-[42px] w-[42px] p-0" disabled={!comment.trim()} aria-label="Отправить">
             <Send size={16} />
           </button>
         </form>
@@ -232,14 +232,14 @@ function Prop({ label, full, children }: { label: string; full?: boolean; childr
 function ActivityItem({ a, onDelete }: { a: Activity; onDelete: () => void }) {
   if (a.kind === "comment" || a.kind === "message_in" || a.kind === "message_out") {
     const tone =
-      a.kind === "message_in" ? "bg-emerald-50 border-emerald-100" : a.kind === "message_out" ? "bg-accent-soft border-indigo-100" : "bg-amber-50/60 border-amber-100";
+      a.kind === "message_in" ? "bg-[#eaf6ef] border-[#cfe9da]" : a.kind === "message_out" ? "bg-accent-soft border-[#d3dcfa]" : "bg-bg/60 border-line";
     return (
       <li className={`group rounded-lg border p-3 ${tone}`}>
         <div className="mb-1 flex items-center gap-2 text-xs text-muted">
-          <span>{a.kind === "message_in" ? "Входящее" : a.kind === "message_out" ? "Исходящее" : "Комментарий"}</span>
-          <span>· {formatDate(a.created_at)}</span>
+          <span className="font-medium text-ink/70">{a.kind === "message_in" ? "Клиент написал" : a.kind === "message_out" ? "Вы ответили" : "Комментарий"}</span>
+          <span className="ml-auto tabular-nums">{formatDate(a.created_at)}</span>
           {a.kind === "comment" && (
-            <button onClick={onDelete} className="ml-auto opacity-0 transition group-hover:opacity-100 hover:text-red-600" title="Удалить">
+            <button onClick={onDelete} className="opacity-0 transition group-hover:opacity-100 focus:opacity-100 hover:text-red-600" title="Удалить">
               <Trash2 size={13} />
             </button>
           )}

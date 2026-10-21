@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import type { Lead, Stage } from "@/lib/types";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatPhone } from "@/lib/format";
 
 type SortKey = "created_at" | "name" | "amount" | "stage";
 
@@ -49,11 +49,11 @@ export function LeadsTable({
   );
 
   if (!leads.length) {
-    return <p className="p-8 text-center text-sm text-muted">Заявок не найдено</p>;
+    return <p className="p-8 text-center text-sm text-muted">Ничего не нашлось. Попробуйте изменить поиск или сбросить фильтр.</p>;
   }
 
   return (
-    <div className="h-full overflow-auto px-4 pb-4">
+    <div className="h-full overflow-auto px-4 pb-4 md:px-6">
       {/* Мобильный вид — список */}
       <ul className="space-y-2 md:hidden">
         {rows.map((l) => {
@@ -62,7 +62,7 @@ export function LeadsTable({
             <li key={l.id} onClick={() => onOpen(l)} className="rounded-lg border border-line bg-panel p-3">
               <div className="flex items-center gap-2">
                 <span className="flex-1 truncate font-medium">{l.name || l.phone || "Без имени"}</span>
-                {l.amount != null && <span className="text-sm font-semibold text-emerald-700">{formatMoney(l.amount)}</span>}
+                {l.amount != null && <span className="text-sm font-semibold text-money tabular-nums">{formatMoney(l.amount)}</span>}
               </div>
               <div className="mt-1 flex items-center gap-2 text-xs text-muted">
                 {s && (
@@ -70,7 +70,7 @@ export function LeadsTable({
                     <span className="h-2 w-2 rounded-full" style={{ background: s.color }} /> {s.name}
                   </span>
                 )}
-                {l.phone && <span>· {l.phone}</span>}
+                {l.phone && <span className="tabular-nums">{formatPhone(l.phone)}</span>}
                 <span className="ml-auto">{formatDate(l.created_at)}</span>
               </div>
             </li>
@@ -95,15 +95,15 @@ export function LeadsTable({
           {rows.map((l) => {
             const s = stageById.get(l.stage_id);
             return (
-              <tr key={l.id} onClick={() => onOpen(l)} className="cursor-pointer border-b border-line last:border-0 hover:bg-black/[0.02]">
+              <tr key={l.id} onClick={() => onOpen(l)} className="cursor-pointer border-b border-line last:border-0 hover:bg-bg/50">
                 <td className="max-w-56 truncate px-3 py-2 font-medium">{l.name || "Без имени"}</td>
-                <td className="whitespace-nowrap px-3 py-2">{l.phone}</td>
+                <td className="whitespace-nowrap px-3 py-2 tabular-nums">{formatPhone(l.phone)}</td>
                 <td className="max-w-40 truncate px-3 py-2">{l.instagram}</td>
                 <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                   <span className="inline-flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full" style={{ background: s?.color }} />
                     <select
-                      className="cursor-pointer bg-transparent outline-none"
+                      className="cursor-pointer bg-transparent outline-none [field-sizing:content]"
                       value={l.stage_id}
                       onChange={(e) => onStage(l.id, e.target.value)}
                     >
