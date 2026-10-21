@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CRM — учёт заявок
 
-## Getting Started
+Лёгкая CRM: воронки с канбаном, карточки лидов с комментариями, импорт/экспорт Excel, вебхук для входящих заявок.
+Стек: Next.js 16 + Supabase (Postgres + Auth), хостинг — Vercel. Всё укладывается в бесплатные тарифы.
 
-First, run the development server:
+## Запуск с нуля
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. **Supabase** (supabase.com → New project, регион Frankfurt):
+   - SQL Editor → вставить и выполнить `supabase/schema.sql`.
+   - Authentication → Sign In / Providers → Email: **выключить** «Allow new users to sign up».
+   - Authentication → Users → Add user → email + пароль заказчика (галочка Auto Confirm).
+   - Project Settings → API: скопировать URL, `anon` key и `service_role` key.
+2. **Vercel** → Import из GitHub → Environment Variables (см. `.env.example`):
+   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - `WEBHOOK_SECRET` — любая длинная случайная строка.
+3. Deploy. На телефоне: открыть сайт → «Поделиться» → «На экран Домой» — CRM работает как приложение.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Локально: `cp .env.example .env.local`, заполнить, `npm run dev`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Вебхук входящих заявок
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`POST /api/leads/incoming?token=WEBHOOK_SECRET` — JSON или form-data.
+Поля: `name, phone, instagram, email, source, amount, note, pipeline, stage, external_id`.
+Неизвестные поля дописываются в заметку. Повтор с тем же телефоном не создаёт дубль — пишется в историю лида.
+Готовый URL — в меню CRM → «Интеграции».
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Дальше
+- WhatsApp: входящие → лид + переписка в ленте (таблица `activities`, kind `message_in/out` уже предусмотрены).
