@@ -140,7 +140,10 @@ function query(table: string) {
 
 export const demoClient = {
   from: query,
-  auth: { signInWithPassword: async () => ({ error: null }) },
+  auth: {
+    signInWithPassword: async () => ({ error: null }),
+    getSession: async () => ({ data: { session: { user: { email: "демо-режим" } } } }),
+  },
 };
 
 export function resetDemo() {

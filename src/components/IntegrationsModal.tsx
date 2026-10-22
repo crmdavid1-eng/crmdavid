@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
 import { Check, Copy } from "lucide-react";
 import { Modal } from "@/components/Modal";
 
-export function IntegrationsModal({ token, onClose }: { token: string; onClose: () => void }) {
+export function IntegrationsModal({ demo, onClose }: { demo?: boolean; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [token, setToken] = useState("");
+
+  useEffect(() => {
+    if (demo) return;
+    supabase().auth.getSession().then(async ({ data }) => {
+      const res = await fetch("/api/webhook-url", { headers: { authorization: `Bearer ${data.session?.access_token}` } });
+      if (res.ok) setToken((await res.json()).token);
+    });
+  }, [demo]);
   const url = typeof window === "undefined" ? "" : `${window.location.origin}/api/leads/incoming?token=${token}`;
 
   function copy() {
@@ -30,7 +40,7 @@ export function IntegrationsModal({ token, onClose }: { token: string; onClose: 
               </button>
             </div>
           ) : (
-            <p className="rounded-lg bg-amber-50 p-3 text-amber-800">Не задана переменная WEBHOOK_SECRET в настройках Vercel.</p>
+            <p className="rounded-lg bg-amber-50 p-3 text-amber-800">{demo ? "В демо-режиме вебхук не работает: сначала подключите Supabase." : "Адрес загружается. Если он не появился, проверьте переменную WEBHOOK_SECRET в настройках Netlify."}</p>
           )}
           <p className="mt-2 text-xs text-muted">
             Поля: <code>name</code>, <code>phone</code>, <code>instagram</code>, <code>email</code>, <code>source</code>,{" "}

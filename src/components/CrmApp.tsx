@@ -9,6 +9,7 @@ import { exportLeads } from "@/lib/excel";
 import { formatMoney, plural } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { resetDemo } from "@/lib/supabase/demo";
+import { supabase } from "@/lib/supabase/client";
 import { Board } from "@/components/Board";
 import { FunnelStrip } from "@/components/FunnelStrip";
 import { LeadsTable } from "@/components/LeadsTable";
@@ -24,7 +25,7 @@ type Dialog = null | "settings" | "import" | "integrations" | { newLead: string 
 
 const VIEW_KEY = "crm.view";
 
-export function CrmApp({ email, webhookToken, demo }: { email: string; webhookToken: string; demo?: boolean }) {
+export function CrmApp({ email, demo }: { email: string; demo?: boolean }) {
   const crm = useCrm();
   const [view, setView] = useState<View>(() => {
     try {
@@ -158,9 +159,7 @@ export function CrmApp({ email, webhookToken, demo }: { email: string; webhookTo
                   <div className="my-1 border-t border-line" />
                   <div className="truncate px-3 py-1 text-xs text-muted">{email}</div>
                   {!demo && (
-                    <form action="/auth/signout" method="post">
-                      <MenuItem icon={<LogOut size={16} />} type="submit">Выйти</MenuItem>
-                    </form>
+                    <MenuItem icon={<LogOut size={16} />} onClick={() => supabase().auth.signOut()}>Выйти</MenuItem>
                   )}
                 </div>
               </>
@@ -265,7 +264,7 @@ export function CrmApp({ email, webhookToken, demo }: { email: string; webhookTo
       )}
       {dialog === "settings" && <PipelineSettings crm={crm} onClose={() => setDialog(null)} />}
       {dialog === "import" && <ImportModal crm={crm} onClose={() => setDialog(null)} />}
-      {dialog === "integrations" && <IntegrationsModal token={webhookToken} onClose={() => setDialog(null)} />}
+      {dialog === "integrations" && <IntegrationsModal demo={demo} onClose={() => setDialog(null)} />}
       <Toasts />
     </div>
   );

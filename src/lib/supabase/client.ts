@@ -1,16 +1,15 @@
 import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { demoClient } from "./demo";
 import { IS_DEMO } from "./mode";
 
-let client: ReturnType<typeof createBrowserClient> | undefined;
+let client: SupabaseClient | undefined;
 
-export function supabase(): ReturnType<typeof createBrowserClient> {
-  if (IS_DEMO) return demoClient as unknown as ReturnType<typeof createBrowserClient>;
-  if (!client) {
-    client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
-  }
+export function supabase(): SupabaseClient {
+  if (IS_DEMO) return demoClient as unknown as SupabaseClient;
+  client ??= createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
   return client;
 }
