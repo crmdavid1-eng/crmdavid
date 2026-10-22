@@ -2,65 +2,122 @@
 
 
 :root {
-  --c-bg: #edf0ec;
+  --c-bg: #f5f6f8;
   --c-panel: #ffffff;
-  --c-sunken: #f5f7f4;
-  --c-column: rgb(255 255 255 / 0.45);
-  --c-line: #d9e0db;
-  --c-ink: #142420;
-  --c-muted: #677670;
-  --c-accent: #2448e0;
-  --c-accent-soft: #e8edfd;
-  --c-money: #0e7a55;
-  --c-danger: #c2362b;
-  --c-danger-soft: #fdecea;
-  --c-warn: #a86a08;
-  --c-warn-soft: #fdf3dc;
-  --c-wa: #1a9e5c;
-  --c-wa-soft: #e7f6ee;
+  --c-sunken: #f8f9fb;
+  --c-column: rgb(16 24 40 / 0.035);
+  --c-line: #e4e7ec;
+  --c-ink: #101828;
+  --c-muted: #667085;
+  --c-money: #079455;
+  --c-danger: #d92d20;
+  --c-danger-soft: #fef3f2;
+  --c-warn: #b54708;
+  --c-warn-soft: #fffaeb;
+  --c-wa: #16a34a;
+  --c-wa-soft: #ecfdf3;
+  --c-accent: #2f5bff;
+  --c-accent-soft: #ebf0ff;
   color-scheme: light;
 }
 
-
 :root[data-theme="dark"] {
-  --c-bg: #0e1513;
-  --c-panel: #161f1c;
-  --c-sunken: #121a17;
-  --c-column: rgb(255 255 255 / 0.025);
-  --c-line: #26332e;
-  --c-ink: #e3ebe6;
-  --c-muted: #8b9b94;
-  --c-accent: #7190ff;
-  --c-accent-soft: #1b2546;
-  --c-money: #3fcf92;
-  --c-danger: #ff7a6e;
-  --c-danger-soft: #3a1d1b;
-  --c-warn: #f2b84b;
-  --c-warn-soft: #362a12;
-  --c-wa: #3fcf85;
-  --c-wa-soft: #163126;
+  --c-bg: #0c0e12;
+  --c-panel: #16191f;
+  --c-sunken: #121419;
+  --c-column: rgb(255 255 255 / 0.03);
+  --c-line: #262a33;
+  --c-ink: #eceef2;
+  --c-muted: #8b92a1;
+  --c-money: #47cd89;
+  --c-danger: #f97066;
+  --c-danger-soft: #3a1714;
+  --c-warn: #fdb022;
+  --c-warn-soft: #33250a;
+  --c-wa: #4ade80;
+  --c-wa-soft: #0f2a1b;
+  --c-accent: #7b96ff;
+  --c-accent-soft: #1b2550;
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    --c-bg: #0e1513;
-    --c-panel: #161f1c;
-    --c-sunken: #121a17;
-    --c-column: rgb(255 255 255 / 0.025);
-    --c-line: #26332e;
-    --c-ink: #e3ebe6;
-    --c-muted: #8b9b94;
-    --c-accent: #7190ff;
-    --c-accent-soft: #1b2546;
-    --c-money: #3fcf92;
-    --c-danger: #ff7a6e;
-    --c-danger-soft: #3a1d1b;
-    --c-warn: #f2b84b;
-    --c-warn-soft: #362a12;
-    --c-wa: #3fcf85;
-    --c-wa-soft: #163126;
+    --c-bg: #0c0e12;
+    --c-panel: #16191f;
+    --c-sunken: #121419;
+    --c-column: rgb(255 255 255 / 0.03);
+    --c-line: #262a33;
+    --c-ink: #eceef2;
+    --c-muted: #8b92a1;
+    --c-money: #47cd89;
+    --c-danger: #f97066;
+    --c-danger-soft: #3a1714;
+    --c-warn: #fdb022;
+    --c-warn-soft: #33250a;
+    --c-wa: #4ade80;
+    --c-wa-soft: #0f2a1b;
+    --c-accent: #7b96ff;
+    --c-accent-soft: #1b2550;
     color-scheme: dark;
+  }
+}
+
+/* Акцентный цвет — выбирается в настройках */
+:root[data-accent="violet"] {
+  --c-accent: #7a3cf0;
+  --c-accent-soft: #f2ecfe;
+}
+:root[data-accent="violet"][data-theme="dark"] {
+  --c-accent: #a98bfa;
+  --c-accent-soft: #2a1f48;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="violet"]:not([data-theme="light"]):not([data-theme="dark"]) {
+    --c-accent: #a98bfa;
+    --c-accent-soft: #2a1f48;
+  }
+}
+:root[data-accent="teal"] {
+  --c-accent: #0e9384;
+  --c-accent-soft: #e6f6f4;
+}
+:root[data-accent="teal"][data-theme="dark"] {
+  --c-accent: #2ed3b7;
+  --c-accent-soft: #0f2f2b;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="teal"]:not([data-theme="light"]):not([data-theme="dark"]) {
+    --c-accent: #2ed3b7;
+    --c-accent-soft: #0f2f2b;
+  }
+}
+:root[data-accent="pink"] {
+  --c-accent: #dd2590;
+  --c-accent-soft: #fdeaf4;
+}
+:root[data-accent="pink"][data-theme="dark"] {
+  --c-accent: #f670c7;
+  --c-accent-soft: #3b1530;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="pink"]:not([data-theme="light"]):not([data-theme="dark"]) {
+    --c-accent: #f670c7;
+    --c-accent-soft: #3b1530;
+  }
+}
+:root[data-accent="orange"] {
+  --c-accent: #e8590c;
+  --c-accent-soft: #fff0e6;
+}
+:root[data-accent="orange"][data-theme="dark"] {
+  --c-accent: #fd9152;
+  --c-accent-soft: #3a2112;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="orange"]:not([data-theme="light"]):not([data-theme="dark"]) {
+    --c-accent: #fd9152;
+    --c-accent-soft: #3a2112;
   }
 }
 

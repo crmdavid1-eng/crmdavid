@@ -74,7 +74,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full flex-col md:flex-row">
       {/* Боковая панель — компьютер */}
-      <nav className="hidden w-[4.75rem] shrink-0 flex-col items-center gap-1 border-r border-line py-4 md:flex" aria-label="Разделы">
+      <nav className="hidden w-[4.75rem] shrink-0 flex-col items-center gap-1 border-r border-line bg-panel py-4 md:flex" aria-label="Разделы">
         <Link href="/" className="mb-4" aria-label="На главную">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon.svg" alt="" className="h-9 w-9" />
@@ -146,7 +146,7 @@ function NavItem({ href, label, icon: Icon, active, badge }: NavProps) {
       href={href}
       aria-current={active ? "page" : undefined}
       className={`relative flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[0.6875rem] font-medium transition ${
-        active ? "bg-panel text-ink shadow-sm" : "text-muted hover:bg-ink/[0.04] hover:text-ink"
+        active ? "bg-accent-soft text-accent" : "text-muted hover:bg-ink/[0.04] hover:text-ink"
       }`}
     >
       <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />

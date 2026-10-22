@@ -5,7 +5,7 @@ import { Bell, Columns3, FileSpreadsheet, LogOut, MessageSquareText, Monitor, Mo
 import { useCrm } from "@/lib/crm";
 import { supabase } from "@/lib/supabase/client";
 import { fillTemplate } from "@/lib/format";
-import { setTheme, useTheme, type Theme } from "@/lib/theme";
+import { ACCENTS, setAccent, setTheme, useAccent, useTheme, type Theme } from "@/lib/theme";
 import { toast } from "@/lib/toast";
 import { notificationsSupported } from "@/lib/reminders";
 import { useSession } from "@/components/AuthGate";
@@ -158,6 +158,8 @@ function LookPanel() {
           </button>
         ))}
       </div>
+      <AccentPicker />
+
       <NotificationsToggle />
 
       <p className="mt-6 mb-2 text-sm text-muted">Горячие клавиши</p>
@@ -167,6 +169,30 @@ function LookPanel() {
         <li><Kbd>/</Kbd> поиск по заявкам</li>
         <li><Kbd>Esc</Kbd> закрыть карточку или окно</li>
       </ul>
+    </div>
+  );
+}
+
+function AccentPicker() {
+  const accent = useAccent();
+  return (
+    <div className="mt-6">
+      <p className="mb-2 text-sm text-muted">Акцентный цвет</p>
+      <div className="flex flex-wrap gap-2">
+        {ACCENTS.map((a) => (
+          <button
+            key={a.id}
+            onClick={() => setAccent(a.id)}
+            aria-pressed={accent === a.id}
+            className={`flex items-center gap-2 rounded-full border py-1.5 pr-3 pl-1.5 text-sm transition ${
+              accent === a.id ? "border-ink font-medium" : "border-line hover:border-ink/30"
+            }`}
+          >
+            <span className="h-5 w-5 rounded-full" style={{ background: a.color }} />
+            {a.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

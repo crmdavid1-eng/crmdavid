@@ -35,5 +35,42 @@ export function useTheme() {
   );
 }
 
+export const ACCENTS = [
+  { id: "blue", label: "Синий", color: "#2f5bff" },
+  { id: "violet", label: "Фиолетовый", color: "#7a3cf0" },
+  { id: "teal", label: "Бирюзовый", color: "#0e9384" },
+  { id: "pink", label: "Розовый", color: "#dd2590" },
+  { id: "orange", label: "Оранжевый", color: "#e8590c" },
+] as const;
+export type Accent = (typeof ACCENTS)[number]["id"];
+const ACCENT_KEY = "crm.accent";
+
+function readAccent(): Accent {
+  try {
+    const v = localStorage.getItem(ACCENT_KEY);
+    return ACCENTS.some((a) => a.id === v) ? (v as Accent) : "blue";
+  } catch {
+    return "blue";
+  }
+}
+
+export function setAccent(a: Accent) {
+  try {
+    if (a === "blue") localStorage.removeItem(ACCENT_KEY);
+    else localStorage.setItem(ACCENT_KEY, a);
+  } catch {}
+  if (a === "blue") document.documentElement.removeAttribute("data-accent");
+  else document.documentElement.setAttribute("data-accent", a);
+  subs.forEach((f) => f());
+}
+
+export function useAccent() {
+  return useSyncExternalStore(
+    (f) => { subs.add(f); return () => subs.delete(f); },
+    readAccent,
+    () => "blue" as Accent,
+  );
+}
+
 /** Ставится в <head> до гидрации, чтобы не мигало. */
-export const themeScript = `try{var t=localStorage.getItem("${KEY}");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
+export const themeScript = `try{var d=document.documentElement,t=localStorage.getItem("${KEY}"),a=localStorage.getItem("${ACCENT_KEY}");if(t==="light"||t==="dark")d.setAttribute("data-theme",t);if(a)d.setAttribute("data-accent",a)}catch(e){}`;
