@@ -27,6 +27,7 @@ export type Lead = {
   next_action: string | null;
   next_action_at: string | null;
   tags: string[];
+  lost_reason: string | null;
   stage_changed_at: string;
   created_at: string;
   updated_at: string;
@@ -51,6 +52,8 @@ export const STAGE_COLORS = [
   "#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981",
   "#14b8a6", "#ef4444", "#64748b", "#0ea5e9", "#84cc16",
 ];
+
+export const LOST_REASONS = ["Дорого", "Не актуально", "Выбрал другого", "Не отвечает", "Не целевой", "Отложил на потом"];
 
 export const STAGE_KIND_LABEL: Record<StageKind, string> = {
   open: "В работе",

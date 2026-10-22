@@ -4,7 +4,7 @@
 type Row = Record<string, unknown> & { id: string };
 type Db = Record<string, Row[]>;
 
-const KEY = "crm.demo.db.v2";
+const KEY = "crm.demo.db.v3";
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
@@ -36,6 +36,7 @@ function seed(): Db {
     phone: `+7701${(1234567 + i * 7919).toString().slice(0, 7)}`, instagram: i % 2 ? null : `@${name.split(" ")[0].toLowerCase()}`,
     email: null, source, amount, note, position: i, external_id: null,
     next_action: step, next_action_at: due == null ? null : at(due), tags: [...tags],
+    lost_reason: st === 4 ? "Дорого" : null,
     stage_changed_at: at(-ago * 0.6), created_at: at(-ago), updated_at: now(),
   }));
   const activities = leads.flatMap((l) => [

@@ -69,7 +69,7 @@ export function PipelineView() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="mx-auto flex min-h-0 w-full max-w-[128rem] flex-1 flex-col">
       <header className="flex items-center gap-2 px-4 pt-3 md:gap-4 md:px-6 md:pt-5">
         <div className="relative min-w-0">
           <select
@@ -99,7 +99,7 @@ export function PipelineView() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Escape" && (setQuery(""), e.currentTarget.blur())}
             />
-            <kbd className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded border border-line px-1 text-[10px] text-muted">/</kbd>
+            <kbd className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded border border-line px-1 text-[0.625rem] text-muted">/</kbd>
           </div>
           <button className="btn-ghost p-2 md:hidden" onClick={() => setSearchOpen(!searchOpen)} aria-label="Поиск">
             <Search size={19} />

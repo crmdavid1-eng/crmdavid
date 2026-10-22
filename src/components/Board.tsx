@@ -136,7 +136,7 @@ function Column({ stage, leads, onOpen, onAdd }: { stage: Stage; leads: Lead[]; 
   return (
     <section
       id={`stage-${stage.id}`}
-      className="flex h-full w-[86vw] shrink-0 snap-center flex-col overflow-hidden rounded-xl bg-column sm:w-[17.5rem]"
+      className="flex h-full w-[86vw] shrink-0 snap-center flex-col overflow-hidden rounded-xl bg-column sm:w-auto sm:max-w-[24rem] sm:min-w-[16.5rem] sm:flex-1"
       style={{ boxShadow: `inset 0 3px 0 ${stage.color}` }}
     >
       <header className="flex items-end gap-2 px-3 pt-3.5 pb-2">
@@ -232,7 +232,11 @@ function Card({ lead, stage, overlay }: { lead: Lead; stage?: Stage; overlay?: b
           </span>
         </p>
       )}
-      {!due && lead.note && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{lead.note}</p>}
+      {stage?.kind === "lost" && lead.lost_reason ? (
+        <p className="chip mt-1.5 bg-ink/[0.06] text-muted">Причина: {lead.lost_reason}</p>
+      ) : (
+        !due && lead.note && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{lead.note}</p>
+      )}
 
       {lead.tags.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">

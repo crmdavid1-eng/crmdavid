@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Columns3, FileSpreadsheet, LogOut, MessageSquareText, Monitor, Moon, Palette, Plug, Plus, Sun, Trash2, UserRound } from "lucide-react";
+import { Bell, Columns3, FileSpreadsheet, LogOut, MessageSquareText, Monitor, Moon, Palette, Plug, Plus, Sun, Trash2, UserRound } from "lucide-react";
 import { useCrm } from "@/lib/crm";
 import { supabase } from "@/lib/supabase/client";
 import { fillTemplate } from "@/lib/format";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
 import { toast } from "@/lib/toast";
+import { notificationsSupported } from "@/lib/reminders";
 import { useSession } from "@/components/AuthGate";
 import { PipelineSettings } from "@/components/PipelineSettings";
 import { ImportPanel } from "@/components/ImportPanel";
@@ -17,7 +18,7 @@ const SECTIONS = [
   { id: "templates", label: "Шаблоны сообщений", icon: MessageSquareText },
   { id: "sources", label: "Источники заявок", icon: Plug },
   { id: "excel", label: "Excel", icon: FileSpreadsheet },
-  { id: "look", label: "Оформление", icon: Palette },
+  { id: "look", label: "Оформление и уведомления", icon: Palette },
   { id: "account", label: "Аккаунт", icon: UserRound },
 ] as const;
 
@@ -157,12 +158,38 @@ function LookPanel() {
           </button>
         ))}
       </div>
+      <NotificationsToggle />
+
       <p className="mt-6 mb-2 text-sm text-muted">Горячие клавиши</p>
       <ul className="space-y-1.5 text-sm">
+        <li><Kbd>Ctrl+K</Kbd> найти клиента или перейти в раздел</li>
         <li><Kbd>N</Kbd> новая заявка</li>
         <li><Kbd>/</Kbd> поиск по заявкам</li>
         <li><Kbd>Esc</Kbd> закрыть карточку или окно</li>
       </ul>
+    </div>
+  );
+}
+
+function NotificationsToggle() {
+  const [perm, setPerm] = useState<NotificationPermission | "unsupported">(() =>
+    notificationsSupported() ? Notification.permission : "unsupported",
+  );
+  return (
+    <div className="mt-6">
+      <p className="mb-2 text-sm text-muted">Напоминания о делах</p>
+      {perm === "granted" ? (
+        <p className="flex items-center gap-2 text-sm"><Bell size={16} className="text-money" /> Включены: когда наступит срок дела, придёт уведомление, даже если вкладка CRM в фоне.</p>
+      ) : perm === "denied" ? (
+        <p className="text-sm text-muted">Уведомления запрещены в браузере. Разрешите их в настройках сайта (значок замка в адресной строке).</p>
+      ) : perm === "unsupported" ? (
+        <p className="text-sm text-muted">Этот браузер не поддерживает уведомления. Напоминания будут всплывать внутри CRM.</p>
+      ) : (
+        <button className="btn-outline" onClick={() => Notification.requestPermission().then(setPerm)}>
+          <Bell size={16} /> Включить уведомления
+        </button>
+      )}
+      <p className="mt-2 text-xs text-muted">Напоминания работают, пока CRM открыта в браузере или установлена как приложение.</p>
     </div>
   );
 }

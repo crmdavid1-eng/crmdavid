@@ -17,6 +17,7 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
   const sb = supabase();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [comment, setComment] = useState("");
+  const commentRef = useRef<HTMLTextAreaElement>(null);
   const stages = crm.allStages.filter((s) => s.pipeline_id === lead.pipeline_id).sort((a, b) => a.position - b.position);
   const stage = crm.stageById.get(lead.stage_id);
 
@@ -34,7 +35,7 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
       .limit(300)
       .then(({ data }: { data: Activity[] | null }) => alive && setActivities(data ?? []));
     return () => { alive = false; };
-  }, [sb, lead.id]);
+  }, [sb, lead.id, crm.activityTick]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -121,7 +122,7 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
               return (
                 <button
                   key={s.id}
-                  onClick={() => save({ stage_id: s.id })}
+                  onClick={() => crm.changeStage(lead.id, s.id).then(loadActivities)}
                   aria-pressed={on}
                   className="rounded-full border px-3 py-1 text-xs font-medium transition hover:border-ink/30"
                   style={on ? { background: s.color, borderColor: s.color, color: "#fff" } : { borderColor: "var(--c-line)" }}
@@ -149,6 +150,28 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
                   <AtSign size={16} className="shrink-0" /> <span className="truncate">Instagram</span>
                 </a>
               )}
+            </div>
+          )}
+
+          {/* Итог контакта в один клик */}
+          {lead.phone && stage?.kind === "open" && (
+            <div className="flex flex-wrap items-center gap-1.5 px-4 pt-2 text-xs">
+              <span className="text-muted">Итог:</span>
+              {OUTCOMES.map((o) => (
+                <button
+                  key={o.label}
+                  className="rounded-full border border-line px-2.5 py-1 font-medium transition hover:border-ink/30"
+                  onClick={async () => {
+                    await crm.logActivity(lead.id, "task", o.log);
+                    if (o.next) await save({ next_action: o.next.text, next_action_at: quickDue(o.next.when).toISOString() });
+                    loadActivities();
+                    if (o.focusComment) commentRef.current?.focus();
+                    toast(o.next ? `${o.log}. Следующий шаг: ${o.next.text.toLowerCase()}` : o.log);
+                  }}
+                >
+                  {o.label}
+                </button>
+              ))}
             </div>
           )}
 
@@ -232,7 +255,8 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
 
         <form onSubmit={addComment} className="flex items-end gap-2 border-t border-line p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <textarea
-            className="input max-h-40 min-h-[42px] flex-1 resize-none"
+            ref={commentRef}
+            className="input max-h-40 min-h-[2.625rem] flex-1 resize-none"
             rows={1}
             value={comment}
             placeholder="Комментарий: о чём договорились"
@@ -244,7 +268,7 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
               }
             }}
           />
-          <button className="btn-accent h-[42px] w-[42px] p-0" disabled={!comment.trim()} aria-label="Добавить комментарий">
+          <button className="btn-accent h-[2.625rem] w-[2.625rem] p-0" disabled={!comment.trim()} aria-label="Добавить комментарий">
             <Send size={16} />
           </button>
         </form>
@@ -252,6 +276,14 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
     </div>
   );
 }
+
+/* ---------- Итог контакта ---------- */
+
+const OUTCOMES: { label: string; log: string; next?: { text: string; when: Parameters<typeof quickDue>[0] }; focusComment?: boolean }[] = [
+  { label: "Не дозвонился", log: "Звонок: не дозвонился", next: { text: "Перезвонить", when: "tomorrow" } },
+  { label: "Поговорили", log: "Звонок: поговорили", focusComment: true },
+  { label: "Отправил КП", log: "Отправлено КП", next: { text: "Узнать решение по КП", when: "3days" } },
+];
 
 /* ---------- Следующий шаг ---------- */
 

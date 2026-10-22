@@ -33,6 +33,7 @@ export function normalizeLead(l: Partial<Lead> & { id: string }): Lead {
     tags: l.tags ?? [],
     next_action: l.next_action ?? null,
     next_action_at: l.next_action_at ?? null,
+    lost_reason: l.lost_reason ?? null,
     stage_changed_at: l.stage_changed_at ?? l.created_at ?? new Date().toISOString(),
   };
 }
@@ -52,6 +53,10 @@ function useCrmState() {
   // UI, общий для всех страниц
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   const [newLead, setNewLead] = useState<{ stageId?: string } | null>(null);
+  const [lostAsk, setLostAsk] = useState<{ id: string; stageId: string; position?: number } | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  // Растёт после каждой записи в историю — открытая карточка перечитывает ленту
+  const [activityTick, setActivityTick] = useState(0);
 
   const fail = useCallback((e: unknown) => {
     const msg = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
@@ -189,13 +194,37 @@ function useCrmState() {
       setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch, ...extra } : l)));
       const { error } = await sb.from("leads").update(patch).eq("id", id);
       if (error) fail(error);
+      else if (extra.stage_changed_at) setActivityTick((t) => t + 1); // триггер записал смену этапа
     },
     [sb, fail],
   );
 
+  /**
+   * Смена этапа. При переносе в этап «Отказ» сначала спрашиваем причину (окно в Shell);
+   * пока пользователь не ответил, карточка остаётся на месте.
+   */
+  const changeStage = useCallback(
+    (id: string, stageId: string, position?: number) => {
+      const lead = leadsRef.current.find((l) => l.id === id);
+      const target = stageById.get(stageId);
+      if (!lead || lead.stage_id === stageId) {
+        if (lead && position != null) return updateLead(id, { position });
+        return Promise.resolve();
+      }
+      if (target?.kind === "lost" && stageById.get(lead.stage_id)?.kind !== "lost") {
+        setLostAsk({ id, stageId, position });
+        return Promise.resolve();
+      }
+      const patch: LeadInput = { stage_id: stageId, ...(position != null ? { position } : {}) };
+      if (target?.kind !== "lost" && lead.lost_reason) patch.lost_reason = null;
+      return updateLead(id, patch);
+    },
+    [stageById, updateLead],
+  );
+
   const moveLead = useCallback(
-    (id: string, stageId: string, position: number) => updateLead(id, { stage_id: stageId, position }),
-    [updateLead],
+    (id: string, stageId: string, position: number) => changeStage(id, stageId, position),
+    [changeStage],
   );
 
   const deleteLeads = useCallback(
@@ -210,9 +239,28 @@ function useCrmState() {
   const logActivity = useCallback(
     async (leadId: string, kind: string, body: string) => {
       await sb.from("activities").insert({ lead_id: leadId, kind, body });
+      setActivityTick((t) => t + 1);
     },
     [sb],
   );
+
+  const confirmLost = useCallback(
+    async (reason: string | null) => {
+      if (!lostAsk) return;
+      const { id, stageId, position } = lostAsk;
+      setLostAsk(null);
+      await updateLead(id, {
+        stage_id: stageId,
+        lost_reason: reason,
+        next_action: null,
+        next_action_at: null,
+        ...(position != null ? { position } : {}),
+      });
+      if (reason) await logActivity(id, "comment", `Причина отказа: ${reason}`);
+    },
+    [lostAsk, updateLead, logActivity],
+  );
+
 
   /** Закрыть следующий шаг: пишем в историю и очищаем. */
   const completeAction = useCallback(
@@ -380,6 +428,13 @@ function useCrmState() {
     createLead,
     updateLead,
     moveLead,
+    changeStage,
+    lostAsk,
+    confirmLost,
+    cancelLost: () => setLostAsk(null),
+    paletteOpen,
+    setPaletteOpen,
+    activityTick,
     deleteLeads,
     deleteLead: (id: string) => deleteLeads([id]),
     logActivity,

@@ -178,7 +178,7 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
                       <select
                         className="cursor-pointer bg-transparent outline-none [field-sizing:content]"
                         value={l.stage_id}
-                        onChange={(e) => crm.updateLead(l.id, { stage_id: e.target.value })}
+                        onChange={(e) => crm.changeStage(l.id, e.target.value)}
                         aria-label="Этап"
                       >
                         {stages.map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}

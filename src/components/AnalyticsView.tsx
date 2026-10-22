@@ -83,7 +83,11 @@ export function AnalyticsView() {
         return { stage: s, count: ls.length, amount: ls.reduce((x, l) => x + (l.amount ?? 0), 0) };
       });
 
-    return { created, won, lost, revenue, conversion, buckets, weekly, sources, funnel, avg: won.length ? revenue / won.length : 0 };
+    const reasonMap = new Map<string, number>();
+    for (const l of lost) reasonMap.set(l.lost_reason || "Не указана", (reasonMap.get(l.lost_reason || "Не указана") ?? 0) + 1);
+    const reasons = [...reasonMap.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+
+    return { created, won, lost, revenue, conversion, buckets, weekly, sources, funnel, reasons, avg: won.length ? revenue / won.length : 0 };
   }, [crm.leads, crm.stageById, crm.allStages, crm.pipelineId, days, pid]);
 
   return (
@@ -169,6 +173,28 @@ export function AnalyticsView() {
             )}
           </section>
 
+          {/* Причины отказов */}
+          {data.reasons.length > 0 && (
+            <section className="lg:order-last">
+              <h2 className="text-sm font-semibold">Причины отказов</h2>
+              <p className="text-xs text-muted">Почему не купили: {data.lost.length} {plural(data.lost.length, "отказ", "отказа", "отказов")} за период</p>
+              <ul className="mt-3 space-y-2.5">
+                {data.reasons.map((r) => (
+                  <li key={r.name} className="text-sm">
+                    <div className="flex items-baseline gap-2">
+                      <span className="flex-1 truncate">{r.name}</span>
+                      <span className="text-xs text-muted tabular-nums">{Math.round((r.count / data.lost.length) * 100)}%</span>
+                      <span className="w-8 text-right font-semibold tabular-nums">{r.count}</span>
+                    </div>
+                    <div className="mt-1 h-2 rounded-full bg-ink/[0.05]">
+                      <div className="h-2 rounded-full bg-danger/70" style={{ width: `${(r.count / data.reasons[0].count) * 100}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* Воронка сейчас */}
           <section>
             <h2 className="text-sm font-semibold">Где сейчас заявки</h2>
@@ -228,7 +254,7 @@ function BarsOverTime({ buckets }: { buckets: { label: string; full: string; cou
       <div className="relative h-44 rounded-xl border border-line bg-panel px-3 pt-6 pb-2">
         {/* Сетка: только максимум */}
         <div className="pointer-events-none absolute inset-x-3 top-6 border-t border-dashed border-line" />
-        <span className="pointer-events-none absolute top-1 right-3 text-[11px] text-muted tabular-nums">{max}</span>
+        <span className="pointer-events-none absolute top-1 right-3 text-[0.6875rem] text-muted tabular-nums">{max}</span>
 
         <div className="flex h-full items-end gap-[2px]" onMouseLeave={() => setHover(null)}>
           {buckets.map((b, i) => (
@@ -239,7 +265,7 @@ function BarsOverTime({ buckets }: { buckets: { label: string; full: string; cou
               onClick={() => setHover(i)}
             >
               <div
-                className={`w-full rounded-t-[4px] transition-colors ${hover === i ? "bg-accent" : "bg-accent/70"}`}
+                className={`w-full rounded-t-[0.25rem] transition-colors ${hover === i ? "bg-accent" : "bg-accent/70"}`}
                 style={{ height: b.count ? `${Math.max(3, (b.count / max) * 100)}%` : 0 }}
               />
             </div>
@@ -256,7 +282,7 @@ function BarsOverTime({ buckets }: { buckets: { label: string; full: string; cou
           </div>
         )}
       </div>
-      <div className="relative mx-3 mt-1 h-4 text-[11px] text-muted">
+      <div className="relative mx-3 mt-1 h-4 text-[0.6875rem] text-muted">
         {buckets.map((b, i) =>
           i % every === 0 ? (
             <span

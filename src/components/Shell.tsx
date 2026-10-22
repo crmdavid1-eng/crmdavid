@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CalendarCheck2, Columns3, Settings, X } from "lucide-react";
+import { BarChart3, CalendarCheck2, Columns3, Search, Settings, X } from "lucide-react";
 import { useCrm } from "@/lib/crm";
 import { dueStatus } from "@/lib/format";
 import { resetDemo } from "@/lib/supabase/demo";
@@ -12,6 +12,9 @@ import { LeadDrawer } from "@/components/LeadDrawer";
 import { NewLeadModal } from "@/components/NewLeadModal";
 import { Toasts } from "@/components/Toasts";
 import { toast } from "@/lib/toast";
+import { useReminders } from "@/lib/reminders";
+import { CommandPalette } from "@/components/CommandPalette";
+import { LostReasonModal } from "@/components/LostReasonModal";
 
 const NAV = [
   { href: "/", label: "Воронка", icon: Columns3 },
@@ -34,10 +37,24 @@ export function Shell({ children }: { children: React.ReactNode }) {
     }).length;
   }, [crm.leads]);
 
-  // Горячие клавиши: N — новая заявка, / — поиск
-  const { openNewLead } = crm;
+  // Счётчик срочных дел в заголовке вкладки
+  useEffect(() => {
+    // Next.js выставляет title из metadata после перехода — ставим свой следом
+    const t = setTimeout(() => { document.title = urgent ? `(${urgent}) CRM` : "CRM"; }, 50);
+    return () => clearTimeout(t);
+  }, [urgent, path]);
+
+  useReminders(crm.leads, crm.openLead);
+
+  // Горячие клавиши: N — новая заявка, / — поиск, Ctrl/⌘+K — палитра
+  const { openNewLead, setPaletteOpen } = crm;
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "л")) {
+        e.preventDefault();
+        setPaletteOpen(true);
+        return;
+      }
       const t = e.target as HTMLElement;
       if (t.closest("input, textarea, select, [contenteditable]") || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "n" || e.key === "т") { e.preventDefault(); openNewLead(); }
@@ -48,7 +65,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openNewLead]);
+  }, [openNewLead, setPaletteOpen]);
 
   if (crm.loading) return <Splash />;
 
@@ -57,7 +74,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full flex-col md:flex-row">
       {/* Боковая панель — компьютер */}
-      <nav className="hidden w-[76px] shrink-0 flex-col items-center gap-1 border-r border-line py-4 md:flex" aria-label="Разделы">
+      <nav className="hidden w-[4.75rem] shrink-0 flex-col items-center gap-1 border-r border-line py-4 md:flex" aria-label="Разделы">
         <Link href="/" className="mb-4" aria-label="На главную">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon.svg" alt="" className="h-9 w-9" />
@@ -65,6 +82,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {NAV.map((n) => (
           <NavItem key={n.href} {...n} active={path === n.href} badge={n.href === "/today" ? urgent : 0} />
         ))}
+        <button
+          onClick={() => crm.setPaletteOpen(true)}
+          className="mt-auto flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[0.6875rem] font-medium text-muted transition hover:bg-ink/[0.04] hover:text-ink"
+          title="Поиск и команды (Ctrl+K)"
+        >
+          <Search size={20} strokeWidth={1.8} />
+          Ctrl+K
+        </button>
       </nav>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -106,6 +131,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           onCreated={(lead) => toast("Заявка создана", { action: { label: "Открыть", run: () => crm.openLead(lead.id) } })}
         />
       )}
+      <LostReasonModal />
+      {crm.paletteOpen && <CommandPalette />}
       <Toasts />
     </div>
   );
@@ -118,7 +145,7 @@ function NavItem({ href, label, icon: Icon, active, badge }: NavProps) {
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`relative flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-medium transition ${
+      className={`relative flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[0.6875rem] font-medium transition ${
         active ? "bg-panel text-ink shadow-sm" : "text-muted hover:bg-ink/[0.04] hover:text-ink"
       }`}
     >
@@ -134,7 +161,7 @@ function TabItem({ href, label, icon: Icon, active, badge }: NavProps) {
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`relative flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-[10px] font-medium ${active ? "text-accent" : "text-muted"}`}
+      className={`relative flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-[0.625rem] font-medium ${active ? "text-accent" : "text-muted"}`}
     >
       <Icon size={22} strokeWidth={active ? 2.2 : 1.8} />
       {label}
@@ -145,7 +172,7 @@ function TabItem({ href, label, icon: Icon, active, badge }: NavProps) {
 
 function Badge({ n, className }: { n: number; className: string }) {
   return (
-    <span className={`min-w-4 rounded-full bg-danger px-1 text-center text-[10px] leading-4 font-semibold text-white tabular-nums ${className}`}>
+    <span className={`min-w-4 rounded-full bg-danger px-1 text-center text-[0.625rem] leading-4 font-semibold text-white tabular-nums ${className}`}>
       {n > 99 ? "99+" : n}
     </span>
   );
