@@ -4,38 +4,52 @@
 type Row = Record<string, unknown> & { id: string };
 type Db = Record<string, Row[]>;
 
-const KEY = "crm.demo.db";
+const KEY = "crm.demo.db.v2";
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
 function seed(): Db {
   const p = uid();
-  const stages = [
-    ["Новая заявка", "#3b82f6"], ["Связались", "#8b5cf6"], ["Думает", "#f59e0b"], ["Оплата", "#10b981"], ["Отказ", "#ef4444"],
-  ].map(([name, color], i) => ({ id: uid(), pipeline_id: p, name, color, position: i, created_at: now() }));
+  const stages = (
+    [
+      ["Новая заявка", "#3b82f6", "open"], ["Связались", "#8b5cf6", "open"], ["Думает", "#f59e0b", "open"],
+      ["Оплата", "#10b981", "won"], ["Отказ", "#ef4444", "lost"],
+    ] as const
+  ).map(([name, color, kind], i) => ({ id: uid(), pipeline_id: p, name, color, kind, position: i, created_at: now() }));
+  const H = 36e5;
+  const at = (hours: number) => new Date(Date.now() + hours * H).toISOString();
   const people = [
-    ["Айгерим Касымова", "Instagram", 120000, "Интересует курс, просила перезвонить вечером"],
-    ["Данияр Сейткали", "WhatsApp", 50000, null],
-    ["Асель Бекова", "Реклама", 75000, null],
-    ["Ержан Нурланов", "Instagram", null, "Спрашивал про рассрочку"],
-    ["Мадина Ахметова", "WhatsApp", 125000, null],
-    ["Алихан Бекжанов", "Реклама", 150000, null],
-    ["Камила Омарова", "Instagram", null, null],
-    ["Нурлан Садыков", "Рекомендация", 200000, "От Айгерим"],
+    // имя, источник, сумма, заметка, этап, создана (ч назад), шаг, срок (ч), теги
+    ["Айгерим Касымова", "Instagram", 120000, "Интересует курс, просила перезвонить вечером", 1, 30, "Перезвонить, обсудить тариф", -3, ["vip"]],
+    ["Данияр Сейткали", "WhatsApp", 50000, null, 0, 2, "Первое касание", 2, []],
+    ["Асель Бекова", "Реклама", 75000, null, 2, 120, "Отправить КП", 20, ["рассрочка"]],
+    ["Ержан Нурланов", "Instagram", null, "Спрашивал про рассрочку", 1, 75, null, null, ["рассрочка"]],
+    ["Мадина Ахметова", "WhatsApp", 125000, null, 2, 200, "Напомнить про оплату", -28, []],
+    ["Алихан Бекжанов", "Реклама", 150000, null, 3, 260, null, null, ["vip"]],
+    ["Камила Омарова", "Instagram", null, null, 0, 6, "Написать в WhatsApp", 5, []],
+    ["Нурлан Садыков", "Рекомендация", 200000, "От Айгерим", 3, 400, null, null, []],
+    ["Тимур Жумабаев", "Instagram", 60000, "Дорого", 4, 300, null, null, []],
+    ["Сабина Ерланова", "Реклама", 90000, null, 1, 50, "Созвон в 15:00", 75, []],
   ] as const;
-  const leads = people.map(([name, source, amount, note], i) => ({
-    id: uid(), pipeline_id: p, stage_id: stages[[0, 0, 1, 1, 2, 3, 0, 2][i]].id, name,
+  const leads = people.map(([name, source, amount, note, st, ago, step, due, tags], i) => ({
+    id: uid(), pipeline_id: p, stage_id: stages[st].id, name,
     phone: `+7701${(1234567 + i * 7919).toString().slice(0, 7)}`, instagram: i % 2 ? null : `@${name.split(" ")[0].toLowerCase()}`,
     email: null, source, amount, note, position: i, external_id: null,
-    created_at: new Date(Date.now() - i * 5 * 36e5).toISOString(), updated_at: now(),
+    next_action: step, next_action_at: due == null ? null : at(due), tags: [...tags],
+    stage_changed_at: at(-ago * 0.6), created_at: at(-ago), updated_at: now(),
   }));
   const activities = leads.flatMap((l) => [
     { id: uid(), lead_id: l.id, kind: "created", body: `Заявка пришла: ${l.source}`, meta: null, created_at: l.created_at },
   ]);
   activities.push({ id: uid(), lead_id: leads[0].id, kind: "comment", body: "Позвонила, ждёт КП до пятницы", meta: null, created_at: now() });
+  const templates = [
+    ["Первое касание", "Здравствуйте, {имя}! Получили вашу заявку. Удобно сейчас обсудить детали?"],
+    ["Напоминание", "{имя}, добрый день! Напоминаю о нашем разговоре. Остались вопросы?"],
+    ["Реквизиты для оплаты", "{имя}, отправляю реквизиты для оплаты {сумма}. После оплаты пришлите, пожалуйста, чек."],
+  ].map(([title, body], i) => ({ id: uid(), title, body, position: i, created_at: now() }));
   return {
     pipelines: [{ id: p, name: "Продажи", position: 0, created_at: now() }],
-    stages, leads, activities,
+    stages, leads, activities, templates,
   };
 }
 
@@ -68,6 +82,7 @@ function onDelete(db: Db, table: string, removed: Row[]) {
 
 function query(table: string) {
   const filters: [string, unknown][] = [];
+  const inFilters: [string, unknown[]][] = [];
   let op: "select" | "insert" | "update" | "delete" = "select";
   let payload: Row | Row[] | Record<string, unknown> | undefined;
   let single = false;
@@ -78,6 +93,7 @@ function query(table: string) {
   const b = {
     select: () => b,
     eq: (k: string, v: unknown) => { filters.push([k, v]); return b; },
+    in: (k: string, vs: unknown[]) => { inFilters.push([k, vs]); return b; },
     order: (k: string, o?: { ascending?: boolean }) => { orders.push([k, o?.ascending !== false]); return b; },
     range: (from: number, to: number) => { range = [from, to]; return b; },
     limit: (n: number) => { limit = n; return b; },
@@ -89,7 +105,7 @@ function query(table: string) {
     then<T>(resolve: (r: { data: unknown; error: null }) => T) {
       const db = load();
       db[table] ??= [];
-      const match = (r: Row) => filters.every(([k, v]) => r[k] === v);
+      const match = (r: Row) => filters.every(([k, v]) => r[k] === v) && inFilters.every(([k, vs]) => vs.includes(r[k]));
       let data: unknown = null;
 
       if (op === "insert") {
@@ -107,6 +123,7 @@ function query(table: string) {
               id: uid(), lead_id: r.id, kind: "stage", body: `${name(r.stage_id)} → ${name(payload.stage_id)}`,
               meta: null, created_at: now(),
             });
+            r.stage_changed_at = now();
           }
           Object.assign(r, payload, table === "leads" ? { updated_at: now() } : {});
         }

@@ -1,11 +1,11 @@
-import type { Lead, Stage } from "@/lib/types";
+import type { Lead, Pipeline, Stage } from "@/lib/types";
 import { normalizePhone } from "@/lib/format";
-import type { LeadInput } from "@/lib/useCrm";
+import type { LeadInput } from "@/lib/crm";
 
-const COLUMNS = ["Имя", "Телефон", "Instagram", "Email", "Источник", "Сумма", "Этап", "Заметка", "Создана"] as const;
+const COLUMNS = ["Имя", "Телефон", "Instagram", "Email", "Источник", "Сумма", "Этап", "Заметка", "Теги", "Следующий шаг", "Срок", "Воронка", "Создана"] as const;
 
 /** Варианты заголовков, которые узнаём при импорте (в нижнем регистре). */
-const ALIASES: Record<string, keyof LeadInput | "stage" | "created"> = {
+const ALIASES: Record<string, keyof LeadInput | "stage" | "created" | "tags"> = {
   "имя": "name", "фио": "name", "клиент": "name", "name": "name", "контакт": "name",
   "телефон": "phone", "тел": "phone", "номер": "phone", "phone": "phone", "мобильный": "phone", "whatsapp": "phone",
   "instagram": "instagram", "инстаграм": "instagram", "инста": "instagram", "ig": "instagram",
@@ -15,11 +15,13 @@ const ALIASES: Record<string, keyof LeadInput | "stage" | "created"> = {
   "этап": "stage", "статус": "stage", "stage": "stage", "status": "stage",
   "заметка": "note", "комментарий": "note", "примечание": "note", "note": "note", "comment": "note", "описание": "note",
   "создана": "created", "дата": "created", "дата создания": "created", "created": "created",
+  "теги": "tags", "тег": "tags", "метки": "tags", "tags": "tags",
 };
 
-export async function exportLeads(leads: Lead[], stages: Stage[], fileName: string) {
+export async function exportLeads(leads: Lead[], stages: Stage[], fileName: string, pipelines: Pipeline[] = []) {
   const XLSX = await import("xlsx");
   const stageName = new Map(stages.map((s) => [s.id, s.name]));
+  const pipelineName = new Map(pipelines.map((p) => [p.id, p.name]));
   const rows = leads.map((l) => ({
     "Имя": l.name,
     "Телефон": l.phone ?? "",
@@ -29,10 +31,14 @@ export async function exportLeads(leads: Lead[], stages: Stage[], fileName: stri
     "Сумма": l.amount ?? "",
     "Этап": stageName.get(l.stage_id) ?? "",
     "Заметка": l.note ?? "",
+    "Теги": l.tags.join(", "),
+    "Следующий шаг": l.next_action ?? "",
+    "Срок": l.next_action_at ? new Date(l.next_action_at) : "",
+    "Воронка": pipelineName.get(l.pipeline_id) ?? "",
     "Создана": new Date(l.created_at),
   }));
   const ws = XLSX.utils.json_to_sheet(rows, { header: [...COLUMNS], cellDates: true });
-  ws["!cols"] = [{ wch: 24 }, { wch: 16 }, { wch: 18 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 18 }];
+  ws["!cols"] = [24, 16, 18, 22, 14, 12, 16, 40, 18, 28, 18, 16, 18].map((wch) => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Заявки");
   XLSX.writeFile(wb, fileName);
@@ -41,8 +47,8 @@ export async function exportLeads(leads: Lead[], stages: Stage[], fileName: stri
 export async function downloadTemplate() {
   const XLSX = await import("xlsx");
   const ws = XLSX.utils.aoa_to_sheet([
-    [...COLUMNS.slice(0, -1)],
-    ["Айгерим", "+77011234567", "@aigerim", "", "Instagram", 50000, "Новая заявка", "Интересует консультация"],
+    ["Имя", "Телефон", "Instagram", "Email", "Источник", "Сумма", "Этап", "Заметка", "Теги"],
+    ["Айгерим", "+77011234567", "@aigerim", "", "Instagram", 50000, "Новая заявка", "Интересует консультация", "vip, рассрочка"],
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Заявки");
@@ -80,6 +86,8 @@ export async function parseImport(file: File, stages: Stage[]): Promise<ParsedIm
       } else if (key === "stage") {
         const id = stageByName.get(s.toLowerCase());
         if (id) lead.stage_id = id;
+      } else if (key === "tags") {
+        lead.tags = s.split(/[,;#]/).map((t) => t.trim().toLowerCase()).filter(Boolean);
       } else if (key === "created") {
         const d = v instanceof Date ? v : new Date(s);
         if (!Number.isNaN(d.getTime())) lead.created_at = d.toISOString();

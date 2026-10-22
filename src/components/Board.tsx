@@ -17,9 +17,9 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageCircle, Phone, Plus } from "lucide-react";
+import { AlarmClock, MessageCircle, Phone, Plus } from "lucide-react";
 import type { Lead, Stage } from "@/lib/types";
-import { formatDate, formatMoney, formatPhone, waLink } from "@/lib/format";
+import { daysSince, dueStatus, formatDue, formatMoney, formatPhone, waLink, type Due } from "@/lib/format";
 
 type Columns = Record<string, Lead[]>;
 
@@ -124,7 +124,7 @@ export function Board({
           <Column key={s.id} stage={s} leads={cols[s.id] ?? []} onOpen={onOpen} onAdd={() => onAdd(s.id)} />
         ))}
       </div>
-      <DragOverlay>{active && <Card lead={active} overlay />}</DragOverlay>
+      <DragOverlay>{active && <Card lead={active} stage={stages.find((s) => s.id === active.stage_id)} overlay />}</DragOverlay>
     </DndContext>
   );
 }
@@ -136,13 +136,22 @@ function Column({ stage, leads, onOpen, onAdd }: { stage: Stage; leads: Lead[]; 
   return (
     <section
       id={`stage-${stage.id}`}
-      className="flex h-full w-[86vw] shrink-0 snap-center flex-col overflow-hidden rounded-xl bg-white/45 sm:w-[17.5rem]"
+      className="flex h-full w-[86vw] shrink-0 snap-center flex-col overflow-hidden rounded-xl bg-column sm:w-[17.5rem]"
       style={{ boxShadow: `inset 0 3px 0 ${stage.color}` }}
     >
       <header className="flex items-end gap-2 px-3 pt-3.5 pb-2">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-semibold">{stage.name}</h2>
-          <p className="h-4 text-xs text-money tabular-nums">{total > 0 ? formatMoney(total) : ""}</p>
+          <h2 className="flex items-center gap-1.5 truncate text-sm font-semibold">
+            {stage.name}
+            {stage.kind !== "open" && (
+              <span className={`chip ${stage.kind === "won" ? "bg-money/15 text-money" : "bg-ink/[0.07] text-muted"}`}>
+                {stage.kind === "won" ? "успех" : "отказ"}
+              </span>
+            )}
+          </h2>
+          <p className={`h-4 text-xs tabular-nums ${stage.kind === "lost" ? "text-muted line-through" : "text-money"}`}>
+            {total > 0 ? formatMoney(total) : ""}
+          </p>
         </div>
         <span className="text-2xl leading-none font-semibold tracking-tight tabular-nums" style={{ color: stage.color }}>
           {leads.length}
@@ -154,7 +163,7 @@ function Column({ stage, leads, onOpen, onAdd }: { stage: Stage; leads: Lead[]; 
       >
         <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map((l) => (
-            <SortableCard key={l.id} lead={l} onOpen={onOpen} />
+            <SortableCard key={l.id} lead={l} stage={stage} onOpen={onOpen} />
           ))}
         </SortableContext>
         <button onClick={onAdd} className="btn-ghost shrink-0 justify-start text-muted hover:text-ink">
@@ -165,7 +174,7 @@ function Column({ stage, leads, onOpen, onAdd }: { stage: Stage; leads: Lead[]; 
   );
 }
 
-function SortableCard({ lead, onOpen }: { lead: Lead; onOpen: (l: Lead) => void }) {
+function SortableCard({ lead, stage, onOpen }: { lead: Lead; stage: Stage; onOpen: (l: Lead) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
   return (
     <div
@@ -180,16 +189,32 @@ function SortableCard({ lead, onOpen }: { lead: Lead; onOpen: (l: Lead) => void 
         if (e.key === "Enter") onOpen(lead);
       }}
     >
-      <Card lead={lead} />
+      <Card lead={lead} stage={stage} />
     </div>
   );
 }
 
-function Card({ lead, overlay }: { lead: Lead; overlay?: boolean }) {
+const DUE_STYLE: Record<Due, string> = {
+  overdue: "bg-danger-soft text-danger",
+  today: "bg-warn-soft text-warn",
+  tomorrow: "bg-accent-soft text-accent",
+  later: "bg-ink/[0.06] text-muted",
+};
+
+/** Через сколько дней на этапе карточка считается «застрявшей». */
+const STALE_DAYS = 3;
+
+function Card({ lead, stage, overlay }: { lead: Lead; stage?: Stage; overlay?: boolean }) {
   const title = lead.name || formatPhone(lead.phone) || lead.instagram || "Без имени";
+  const due = dueStatus(lead.next_action_at);
+  const stuck = stage?.kind === "open" ? daysSince(lead.stage_changed_at) : 0;
+  const noStep = stage?.kind === "open" && !lead.next_action_at;
+
   return (
     <article
-      className={`cursor-pointer rounded-lg border border-line bg-panel px-3 py-2.5 transition-colors hover:border-ink/25 ${overlay ? "rotate-[1.5deg] border-ink/25 shadow-xl" : ""}`}
+      className={`cursor-pointer rounded-lg border bg-panel px-3 py-2.5 transition-colors hover:border-ink/25 ${
+        due === "overdue" ? "border-danger/40" : "border-line"
+      } ${overlay ? "rotate-[1.5deg] border-ink/25 shadow-xl" : ""}`}
     >
       <div className="flex items-baseline gap-2">
         <h3 className="line-clamp-2 flex-1 text-[0.9rem] leading-snug font-medium">{title}</h3>
@@ -197,11 +222,39 @@ function Card({ lead, overlay }: { lead: Lead; overlay?: boolean }) {
           <span className="shrink-0 text-xs font-semibold text-money tabular-nums">{formatMoney(lead.amount)}</span>
         )}
       </div>
-      {lead.note && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{lead.note}</p>}
+
+      {due && lead.next_action_at && (
+        <p className={`chip mt-1.5 max-w-full ${DUE_STYLE[due]}`}>
+          <AlarmClock size={11} className="shrink-0" />
+          <span className="truncate">
+            {formatDue(lead.next_action_at)}
+            {lead.next_action ? `: ${lead.next_action}` : ""}
+          </span>
+        </p>
+      )}
+      {!due && lead.note && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{lead.note}</p>}
+
+      {lead.tags.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {lead.tags.slice(0, 3).map((t) => (
+            <span key={t} className="chip bg-ink/[0.06] text-ink/75">#{t}</span>
+          ))}
+          {lead.tags.length > 3 && <span className="chip text-muted">+{lead.tags.length - 3}</span>}
+        </div>
+      )}
+
       <div className="mt-2 flex items-center gap-2 text-xs text-muted">
         {lead.source && <span className="font-medium text-ink/70">{lead.source}</span>}
-        <span className="ml-auto tabular-nums">{formatDate(lead.created_at)}</span>
+        <span className="ml-auto flex items-center gap-1.5 tabular-nums">
+          {noStep && <span title="Нет следующего шага" className="h-1.5 w-1.5 rounded-full bg-warn" />}
+          {stuck >= STALE_DAYS ? (
+            <span className={stuck >= 7 ? "text-danger" : "text-warn"} title="Дней на этапе">{stuck} дн. на этапе</span>
+          ) : (
+            <span>{stuck === 0 ? "сегодня" : `${stuck} дн.`}</span>
+          )}
+        </span>
       </div>
+
       {lead.phone && (
         <div className="-mx-1 mt-2 flex items-center gap-0.5 border-t border-line/70 pt-1.5">
           <span className="flex-1 truncate px-1 text-xs tabular-nums text-ink/80">{formatPhone(lead.phone)}</span>
@@ -220,7 +273,7 @@ function Card({ lead, overlay }: { lead: Lead; overlay?: boolean }) {
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            className="rounded-md p-1.5 text-[#1a9e5c] hover:bg-[#1a9e5c]/10"
+            className="rounded-md p-1.5 text-wa hover:bg-wa-soft"
             aria-label="Написать в WhatsApp"
           >
             <MessageCircle size={14} />

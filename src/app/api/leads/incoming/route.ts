@@ -101,6 +101,8 @@ export async function POST(req: NextRequest) {
       note,
       external_id: f.external_id || null,
       position: -Date.now() / 1000,
+      next_action: "Связаться с новой заявкой",
+      next_action_at: new Date().toISOString(),
     })
     .select("id")
     .single();

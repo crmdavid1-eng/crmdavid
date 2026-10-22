@@ -10,13 +10,13 @@ export function Toasts() {
         <div
           key={t.id}
           className={`toast-in pointer-events-auto flex max-w-md items-center gap-3 rounded-xl px-4 py-2.5 text-sm shadow-lg ${
-            t.tone === "error" ? "bg-red-700 text-white" : "bg-ink text-white"
+            t.tone === "error" ? "bg-danger text-white" : "bg-ink text-bg"
           }`}
         >
           <span>{t.text}</span>
           {t.action && (
             <button
-              className="font-semibold text-[#9db4ff] hover:underline"
+              className="font-semibold text-accent-soft hover:underline"
               onClick={() => { t.action!.run(); dismiss(t.id); }}
             >
               {t.action.label}
