@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { onLeadsChange } from "@/lib/supabase/live";
 import { IS_DEMO } from "@/lib/supabase/mode";
 import { toast } from "@/lib/toast";
 import type { Lead, Pipeline, Stage, StageKind, Template } from "@/lib/types";
@@ -98,17 +99,15 @@ function useCrmState() {
   // Realtime: заявки из вебхука и с других устройств
   const leadsRef = useRef(leads);
   useEffect(() => { leadsRef.current = leads; }, [leads]);
-  useEffect(() => {
-    if (IS_DEMO) return;
-    const ch = sb
-      .channel("leads-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, (payload) => {
+  useEffect(
+    () =>
+      onLeadsChange((payload) => {
         if (payload.eventType === "DELETE") {
           const id = (payload.old as { id?: string }).id;
           setLeads((ls) => ls.filter((l) => l.id !== id));
           return;
         }
-        const row = normalizeLead(payload.new as Lead);
+        const row = normalizeLead(payload.new as unknown as Lead);
         const known = leadsRef.current.some((l) => l.id === row.id);
         setLeads((ls) => (ls.some((l) => l.id === row.id) ? ls.map((l) => (l.id === row.id ? row : l)) : [row, ...ls]));
         if (payload.eventType === "INSERT" && !known) {
@@ -116,9 +115,40 @@ function useCrmState() {
             action: { label: "Открыть", run: () => setOpenLeadId(row.id) },
           });
         }
-      })
-      .subscribe();
-    return () => { sb.removeChannel(ch); };
+      }),
+    [],
+  );
+
+  // Запасной путь к свежим данным, если realtime не подключился (на бесплатном тарифе
+  // подписка бывает нестабильной): раз в минуту и при возврате на вкладку перечитываем
+  // заявки и показываем уведомление о новых.
+  useEffect(() => {
+    if (IS_DEMO) return;
+    let last = Date.now();
+    const refresh = async (force = false) => {
+      if (document.visibilityState !== "visible" || (!force && Date.now() - last < 20_000)) return;
+      last = Date.now();
+      const before = new Set(leadsRef.current.map((l) => l.id));
+      const rows = await fetchAll<Lead>((from, to) => sb.from("leads").select("*").order("position").range(from, to)).catch(() => null);
+      if (!rows) return;
+      setLeads(rows.map(normalizeLead));
+      const fresh = rows.filter((r) => !before.has(r.id));
+      if (fresh.length === 1) {
+        const row = fresh[0];
+        toast(`Новая заявка: ${row.name || row.phone || "без имени"}`, { action: { label: "Открыть", run: () => setOpenLeadId(row.id) } });
+      } else if (fresh.length > 1) {
+        toast(`Новых заявок: ${fresh.length}`);
+      }
+    };
+    const onVisible = () => refresh();
+    const timer = setInterval(() => refresh(true), 60_000);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, [sb]);
 
   const setPipelineId = useCallback((pid: string) => {
