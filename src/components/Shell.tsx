@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CalendarCheck2, Columns3, Search, Settings, X } from "lucide-react";
+import { BarChart3, CalendarCheck2, Columns3, MessageCircle, Search, Settings, X } from "lucide-react";
 import { useCrm } from "@/lib/crm";
 import { dueStatus } from "@/lib/format";
 import { resetDemo } from "@/lib/supabase/demo";
@@ -19,6 +19,7 @@ import { LostReasonModal } from "@/components/LostReasonModal";
 const NAV = [
   { href: "/", label: "Воронка", icon: Columns3 },
   { href: "/today", label: "Дела", icon: CalendarCheck2 },
+  { href: "/chats", label: "Чаты", icon: MessageCircle },
   { href: "/analytics", label: "Аналитика", icon: BarChart3 },
   { href: "/settings", label: "Настройки", icon: Settings },
 ] as const;
@@ -36,6 +37,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       return d === "overdue" || d === "today";
     }).length;
   }, [crm.leads]);
+
+  const unread = useMemo(() => crm.leads.reduce((s, l) => s + (l.unread || 0), 0), [crm.leads]);
 
   // Счётчик срочных дел в заголовке вкладки
   useEffect(() => {
@@ -80,7 +83,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <img src="/icon.svg" alt="" className="h-9 w-9" />
         </Link>
         {NAV.map((n) => (
-          <NavItem key={n.href} {...n} active={path === n.href} badge={n.href === "/today" ? urgent : 0} />
+          <NavItem key={n.href} {...n} active={path === n.href} badge={n.href === "/today" ? urgent : n.href === "/chats" ? unread : 0} />
         ))}
         <button
           onClick={() => crm.setPaletteOpen(true)}
@@ -114,11 +117,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
         {/* Нижние вкладки — телефон */}
         <nav
-          className="grid shrink-0 grid-cols-4 border-t border-line bg-panel pb-[env(safe-area-inset-bottom)] md:hidden"
+          className="grid shrink-0 grid-cols-5 border-t border-line bg-panel pb-[env(safe-area-inset-bottom)] md:hidden"
           aria-label="Разделы"
         >
           {NAV.map((n) => (
-            <TabItem key={n.href} {...n} active={path === n.href} badge={n.href === "/today" ? urgent : 0} />
+            <TabItem key={n.href} {...n} active={path === n.href} badge={n.href === "/today" ? urgent : n.href === "/chats" ? unread : 0} />
           ))}
         </nav>
       </div>

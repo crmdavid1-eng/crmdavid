@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { useSession } from "@/components/AuthGate";
+import { WhatsAppSetup } from "@/components/WhatsAppSetup";
 
 export function IntegrationsPanel() {
   const { demo } = useSession();
@@ -28,6 +29,8 @@ export function IntegrationsPanel() {
 
   return (
     <div className="space-y-6 text-sm">
+      <WhatsAppSetup />
+
       <div>
         <h3 className="mb-1 font-semibold">Адрес для новых заявок</h3>
         <p className="mb-2 text-muted">
@@ -68,10 +71,6 @@ export function IntegrationsPanel() {
         <p className="text-muted">Tilda → Настройки сайта → Формы → Webhook → вставьте адрес. Поля Name, Phone и Email распознаются сами.</p>
       </div>
 
-      <div className="rounded-lg bg-sunken p-3">
-        <h3 className="mb-1 font-semibold">WhatsApp</h3>
-        <p className="text-muted">Скоро: входящие сообщения будут сами создавать заявку и сохраняться в истории клиента.</p>
-      </div>
     </div>
   );
 }

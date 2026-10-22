@@ -28,6 +28,9 @@ export type Lead = {
   next_action_at: string | null;
   tags: string[];
   lost_reason: string | null;
+  unread: number;
+  last_message: string | null;
+  last_message_at: string | null;
   stage_changed_at: string;
   created_at: string;
   updated_at: string;
@@ -41,6 +44,7 @@ export type Activity = {
   kind: ActivityKind;
   body: string;
   meta: Record<string, unknown> | null;
+  external_id?: string | null;
   created_at: string;
 };
 

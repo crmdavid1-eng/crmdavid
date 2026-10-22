@@ -218,6 +218,11 @@ function Card({ lead, stage, overlay }: { lead: Lead; stage?: Stage; overlay?: b
     >
       <div className="flex items-baseline gap-2">
         <h3 className="line-clamp-2 flex-1 text-[0.9rem] leading-snug font-medium">{title}</h3>
+        {lead.unread > 0 && (
+          <span className="chip shrink-0 bg-wa text-white" title="Новые сообщения в WhatsApp">
+            <MessageCircle size={11} /> {lead.unread}
+          </span>
+        )}
         {lead.amount != null && (
           <span className="shrink-0 text-xs font-semibold text-money tabular-nums">{formatMoney(lead.amount)}</span>
         )}

@@ -25,7 +25,10 @@ const SECTIONS = [
 type SectionId = (typeof SECTIONS)[number]["id"];
 
 export function SettingsView() {
-  const [section, setSection] = useState<SectionId>("pipelines");
+  const [section, setSection] = useState<SectionId>(() => {
+    const s = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("s");
+    return SECTIONS.some((x) => x.id === s) ? (s as SectionId) : "pipelines";
+  });
   const current = SECTIONS.find((s) => s.id === section)!;
 
   return (

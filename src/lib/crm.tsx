@@ -3,11 +3,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { onLeadsChange } from "@/lib/supabase/live";
+import { authedFetch } from "@/lib/api";
 import { IS_DEMO } from "@/lib/supabase/mode";
 import { toast } from "@/lib/toast";
 import type { Lead, Pipeline, Stage, StageKind, Template } from "@/lib/types";
 
 const PIPELINE_KEY = "crm.pipeline";
+
+export type WaStatus = { configured: boolean; ok?: boolean; number?: string; name?: string; error?: string; secured?: boolean; demo?: boolean };
 
 /** Позиция для новой карточки: новые всегда сверху колонки. */
 export const topPosition = () => -Date.now() / 1000;
@@ -34,6 +37,9 @@ export function normalizeLead(l: Partial<Lead> & { id: string }): Lead {
     next_action: l.next_action ?? null,
     next_action_at: l.next_action_at ?? null,
     lost_reason: l.lost_reason ?? null,
+    unread: l.unread ?? 0,
+    last_message: l.last_message ?? null,
+    last_message_at: l.last_message_at ?? null,
     stage_changed_at: l.stage_changed_at ?? l.created_at ?? new Date().toISOString(),
   };
 }
@@ -52,6 +58,8 @@ function useCrmState() {
 
   // UI, общий для всех страниц
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  const [drawerTab, setDrawerTab] = useState<"card" | "chat">("card");
+  const [wa, setWa] = useState<WaStatus>({ configured: IS_DEMO, demo: IS_DEMO });
   const [newLead, setNewLead] = useState<{ stageId?: string } | null>(null);
   const [lostAsk, setLostAsk] = useState<{ id: string; stageId: string; position?: number } | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -123,6 +131,15 @@ function useCrmState() {
       }),
     [],
   );
+
+  // Подключён ли WhatsApp Cloud API (в демо — имитация)
+  useEffect(() => {
+    if (IS_DEMO) return;
+    authedFetch("/api/whatsapp/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => s && setWa(s))
+      .catch(() => {});
+  }, []);
 
   // Запасной путь к свежим данным, если realtime не подключился (на бесплатном тарифе
   // подписка бывает нестабильной): раз в минуту и при возврате на вкладку перечитываем
@@ -451,7 +468,13 @@ function useCrmState() {
     deleteTemplate,
     reload,
     openLeadId,
-    openLead: setOpenLeadId,
+    openLead: (id: string | null, tab: "card" | "chat" = "card") => {
+      setDrawerTab(tab);
+      setOpenLeadId(id);
+    },
+    drawerTab,
+    setDrawerTab,
+    wa,
     newLead,
     openNewLead: (stageId?: string) => setNewLead({ stageId }),
     closeNewLead: () => setNewLead(null),

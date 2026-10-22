@@ -4,7 +4,7 @@
 type Row = Record<string, unknown> & { id: string };
 type Db = Record<string, Row[]>;
 
-const KEY = "crm.demo.db.v3";
+const KEY = "crm.demo.db.v4";
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
@@ -43,6 +43,27 @@ function seed(): Db {
     { id: uid(), lead_id: l.id, kind: "created", body: `Заявка пришла: ${l.source}`, meta: null, created_at: l.created_at },
   ]);
   activities.push({ id: uid(), lead_id: leads[0].id, kind: "comment", body: "Позвонила, ждёт КП до пятницы", meta: null, created_at: now() });
+  const chat = (lead: (typeof leads)[number], lines: [boolean, string, number][]) => {
+    for (const [incoming, body, h] of lines) {
+      activities.push({
+        id: uid(), lead_id: lead.id, kind: incoming ? "message_in" : "message_out", body,
+        meta: { channel: "whatsapp", status: "read" } as never, created_at: at(h),
+      });
+    }
+    const last = lines[lines.length - 1];
+    Object.assign(lead, { last_message: last[1], last_message_at: at(last[2]), unread: lines.filter(([i, , h]) => i && h > -1).length });
+  };
+  chat(leads[1], [
+    [true, "Здравствуйте! Увидел рекламу в инстаграме, сколько стоит курс?", -1.5],
+    [false, "Здравствуйте, Данияр! Курс стоит 50 000 ₸, есть рассрочка. Удобно созвониться?", -1.2],
+    [true, "Да, давайте завтра после обеда", -0.3],
+    [true, "И можно сразу программу курса?", -0.2],
+  ]);
+  chat(leads[6], [[true, "Добрый день, хочу записаться на консультацию", -0.5]]);
+  chat(leads[0], [
+    [true, "Скиньте, пожалуйста, условия по тарифам", -30],
+    [false, "Айгерим, отправила КП на почту, посмотрите 🙌", -29],
+  ]);
   const templates = [
     ["Первое касание", "Здравствуйте, {имя}! Получили вашу заявку. Удобно сейчас обсудить детали?"],
     ["Напоминание", "{имя}, добрый день! Напоминаю о нашем разговоре. Остались вопросы?"],

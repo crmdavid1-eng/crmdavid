@@ -11,6 +11,7 @@ import {
   daysSince, dueStatus, fillTemplate, formatDate, formatDue, igLink, normalizePhone, plural, quickDue, toLocalInput, waLink,
 } from "@/lib/format";
 import { toast } from "@/lib/toast";
+import { ChatPanel } from "@/components/ChatPanel";
 
 export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const crm = useCrm();
@@ -20,6 +21,8 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const stages = crm.allStages.filter((s) => s.pipeline_id === lead.pipeline_id).sort((a, b) => a.position - b.position);
   const stage = crm.stageById.get(lead.stage_id);
+  const tab = crm.drawerTab;
+  const setTab = crm.setDrawerTab;
 
   const loadActivities = useCallback(async () => {
     const { data } = await sb.from("activities").select("*").eq("lead_id", lead.id).order("created_at", { ascending: false }).limit(300);
@@ -75,6 +78,8 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
 
   async function sendWhatsApp(text?: string) {
     if (!lead.phone) return;
+    // WhatsApp подключён — пишем из CRM, во вкладке чата
+    if (crm.wa.configured) return setTab("chat");
     window.open(waLink(lead.phone, text), "_blank", "noopener");
     if (text) {
       await crm.logActivity(lead.id, "message_out", text);
@@ -114,6 +119,20 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
           </button>
         </header>
 
+        <div className="flex gap-1 border-b border-line px-3" role="tablist">
+          <TabBtn on={tab === "card"} onClick={() => setTab("card")}>Карточка</TabBtn>
+          <TabBtn on={tab === "chat"} onClick={() => setTab("chat")}>
+            WhatsApp
+            {lead.unread > 0 && (
+              <span className="min-w-4 rounded-full bg-wa px-1 text-center text-[0.625rem] leading-4 font-semibold text-white tabular-nums">{lead.unread}</span>
+            )}
+          </TabBtn>
+        </div>
+
+        {tab === "chat" ? (
+          <ChatPanel lead={lead} />
+        ) : (
+        <>
         <div className="scroll-thin flex-1 overflow-y-auto">
           {/* Этапы */}
           <div className="flex flex-wrap gap-1.5 px-4 pt-4">
@@ -272,8 +291,25 @@ export function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void 
             <Send size={16} />
           </button>
         </form>
+        </>
+        )}
       </aside>
     </div>
+  );
+}
+
+function TabBtn({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      role="tab"
+      aria-selected={on}
+      onClick={onClick}
+      className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition ${
+        on ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
