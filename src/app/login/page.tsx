@@ -19,9 +19,13 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error } = await supabase().auth.signInWithPassword({ email, password });
+    const login = email.trim().toLowerCase();
+    const { error } = await supabase().auth.signInWithPassword({
+      email: login.includes("@") ? login : `${login}@crm.local`,
+      password,
+    });
     if (error) {
-      setError("Неверный email или пароль");
+      setError("Неверный логин или пароль");
       setLoading(false);
       return;
     }
@@ -40,8 +44,8 @@ export default function LoginPage() {
           </div>
         </div>
         <label className="mb-3 block">
-          <span className="mb-1 block text-sm text-muted">Email</span>
-          <input className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <span className="mb-1 block text-sm text-muted">Логин</span>
+          <input className="input" type="text" autoComplete="username" autoCapitalize="none" autoCorrect="off" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label className="mb-4 block">
           <span className="mb-1 block text-sm text-muted">Пароль</span>

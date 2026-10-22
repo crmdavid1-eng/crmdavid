@@ -157,7 +157,7 @@ export function CrmApp({ email, demo }: { email: string; demo?: boolean }) {
                   <MenuItem icon={<Plug size={16} />} onClick={() => { setMenu(false); setDialog("integrations"); }}>Подключить источники заявок</MenuItem>
                   <MenuItem icon={<RefreshCw size={16} />} onClick={() => { setMenu(false); crm.reload(); }}>Обновить</MenuItem>
                   <div className="my-1 border-t border-line" />
-                  <div className="truncate px-3 py-1 text-xs text-muted">{email}</div>
+                  <div className="truncate px-3 py-1 text-xs text-muted">{email.replace(/@crm\.local$/, "")}</div>
                   {!demo && (
                     <MenuItem icon={<LogOut size={16} />} onClick={() => supabase().auth.signOut()}>Выйти</MenuItem>
                   )}
